@@ -1,0 +1,11 @@
+PIL
+numpy
+gudhi
+matplotlib
+plotly
+bokeh
+pandas
+io
+os
+scipy
+ripser
