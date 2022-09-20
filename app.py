@@ -109,13 +109,13 @@ def CreateDownloadButton(label, data):
             mime='text/csv')
 
 def main():
-    hide_menu_style = """
-        <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        </style>
-        """
-    st.markdown(hide_menu_style, unsafe_allow_html=True)
+    # hide_menu_style = """
+    #     <style>
+    #     #MainMenu {visibility: hidden;}
+    #     footer {visibility: hidden;}
+    #     </style>
+    #     """
+    # st.markdown(hide_menu_style, unsafe_allow_html=True)
 
     st.title("Featurized Persistent Barcode")
     
@@ -124,14 +124,16 @@ def main():
     menu = ["Cifar10","Fashion MNIST","Outex68", "Shrec14", "Custom"]
     choice = st.sidebar.selectbox("Select a Dataset",menu)
 
+    mainPath = os.getcwd()
+
     if choice == "Cifar10":
-        file_path = r"data\cifar10.png"
+        file_path = mainPath + r"/data/cifar10.png"
     elif choice == "Fashion MNIST":
-        file_path = r"data\FashionMNIST.jpg"
+        file_path = mainPath + r"/data/FashionMNIST.jpg"
     elif choice == "Outex68":
-        file_path = r"data\Outex1.bmp"
+        file_path = mainPath + r"/data/Outex1.bmp"
     elif choice == "Shrec14":
-        file_path = r"data\shrec14_data_0.csv"
+        file_path = mainPath + r"/data/shrec14_data_0.csv"
     else:
         file_path = st.sidebar.file_uploader("Upload Image",type=['png','jpeg','jpg','bmp','csv'])
 
