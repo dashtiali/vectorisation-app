@@ -109,13 +109,13 @@ def CreateDownloadButton(label, data):
             mime='text/csv')
 
 def main():
-    # hide_menu_style = """
-    #     <style>
-    #     #MainMenu {visibility: hidden;}
-    #     footer {visibility: hidden;}
-    #     </style>
-    #     """
-    # st.markdown(hide_menu_style, unsafe_allow_html=True)
+    hide_menu_style = """
+        <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        </style>
+        """
+    st.markdown(hide_menu_style, unsafe_allow_html=True)
 
     st.title("Featurized Persistent Barcode")
     
@@ -156,8 +156,8 @@ def main():
                 st.image(input_data,width=250)
         
         if(choice == "Shrec14"):
-            pd0 = pd.read_csv(r"data\shrec14_data_0_ph0.csv").to_numpy()
-            pd1 = pd.read_csv(r"data\shrec14_data_0_ph1.csv").to_numpy()
+            pd0 = pd.read_csv(mainPath + r"/data/shrec14_data_0_ph0.csv").to_numpy()
+            pd1 = pd.read_csv(mainPath + r"/data/shrec14_data_0_ph1.csv").to_numpy()
         else:
             pd0, pd1 = GetPds(input_data, isPointCloud)
 
