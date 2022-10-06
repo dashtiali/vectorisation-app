@@ -1,3 +1,5 @@
+from operator import truediv
+from turtle import width
 import streamlit as st
 from PIL import Image
 import numpy as np
@@ -39,6 +41,13 @@ def GetPds(data, isPointCloud):
         ripser_result = ripser(dist_mat, maxdim=1, distance_matrix=True)
         pd0 = ripser_result['dgms'][0]
         pd1 = ripser_result['dgms'][1]
+
+        for j in range(pd0.shape[0]):
+            if pd0[j,1]==np.inf:
+                np.delete(pd0, j, 0)
+        for j in range(pd1.shape[0]):
+            if pd1[j,1]==np.inf:
+                np.delete(pd1, j, 0)
     else:
         data = np.array(data)
         data_gudhi = np.resize(data, [128, 128])
@@ -49,12 +58,12 @@ def GetPds(data, isPointCloud):
         pd0 = cub_filtration.persistence_intervals_in_dimension(0)
         pd1 = cub_filtration.persistence_intervals_in_dimension(1)
 
-    for j in range(pd0.shape[0]):
-        if pd0[j,1]==np.inf:
-            pd0[j,1]=256
-    for j in range(pd1.shape[0]):
-        if pd1[j,1]==np.inf:
-            pd1[j,1]=256
+        for j in range(pd0.shape[0]):
+            if pd0[j,1]==np.inf:
+                pd0[j,1]=256
+        for j in range(pd1.shape[0]):
+            if pd1[j,1]==np.inf:
+                pd1[j,1]=256
     
     return pd0, pd1
 
@@ -171,14 +180,14 @@ def main():
             # ax.set_title("Persistence Barcode [dim = 0]")
             # col1.pyplot(fig)
 
-            source = ColumnDataSource(data={'x1': pd0[:,0], 'x2': pd0[:,1] - pd0[:,0], 'y': range(len(pd0[:,0]))})
+            source = ColumnDataSource(data={'right': pd0[:,1], 'y': range(len(pd0[:,0]))})
             fig = figure(title='Persistence Barcode [dim = 0]', height=250, tools = tools)
-            fig.hbar(y='y', left='x1', right='x2', height=0.1, alpha=0.5, source=source)
+            fig.hbar(y='y', right='right', height=0.1, alpha=0.5, source=source)
             st.bokeh_chart(fig, use_container_width=True)
             
-            source = ColumnDataSource(data={'x1': pd1[:,0], 'x2': pd1[:,1] - pd1[:,0], 'y': range(len(pd1[:,0]))})
+            source = ColumnDataSource(data={'right': pd1[:,0], 'left': pd1[:,1], 'y': range(len(pd1[:,0]))})
             fig = figure(title='Persistence Barcode [dim = 1]', height=250, tools = tools)
-            fig.hbar(y='y', left='x1', right='x2', height=0.1, alpha=0.5, source=source)
+            fig.hbar(y='y', left='left', right='right', height=0.1, alpha=0.5, source=source)
             st.bokeh_chart(fig, use_container_width=True)
 
             CreateDownloadButton('PH0', pd0)
@@ -227,9 +236,13 @@ def main():
             st.subheader("Persistent Statistics")
             stat_0 = vec.GetPersStats(pd0)
             stat_1 = vec.GetPersStats(pd1)
-            df = pd.DataFrame(np.array((stat_0, stat_1)), index=['PH(0)', 'PH(1)'])
+            df = pd.DataFrame(np.array((stat_0[0:6], stat_1[0:6])), index=['PH(0)', 'PH(1)'])
             df.columns =['Birth Average', 'Death Average', 'Birth STD.', 'Death STD.', 
-                         'Birth Median', 'Death Median', 'Bar Length Average', 'Bar Length STD', 
+                         'Birth Median', 'Death Median']
+            st.dataframe(df)
+
+            df = pd.DataFrame(np.array((stat_0[6:11], stat_1[6:11])), index=['PH(0)', 'PH(1)'])
+            df.columns =['Bar Length Average', 'Bar Length STD', 
                          'Bar Length Median', 'Bar Count', 'Barcode Persitent Entropy']
             st.dataframe(df)
 
@@ -242,16 +255,16 @@ def main():
         if isPersImgChecked:
             st.subheader("Persistent Image")
             col1, col2 = st.columns(2)
-            res = [100,100]
+            res = 100
             PI_0 = vec.GetPersImageFeature(pd0, res)
             fig, ax = plt.subplots()
-            ax.imshow(np.flip(np.reshape(PI_0, res), 0))
+            ax.imshow(np.flip(np.reshape(PI_0, [res,res]), 0))
             ax.set_title("Persistent Image [dim = 0]")
             col1.pyplot(fig)
-        
+
             PI_1 = vec.GetPersImageFeature(pd1, res)
             fig, ax = plt.subplots()
-            ax.imshow(np.flip(np.reshape(PI_1, res), 0))
+            ax.imshow(np.flip(np.reshape(PI_1, [res,res]), 0))
             ax.set_title("Persistent Image [dim = 1]")
             col2.pyplot(fig)
 
@@ -324,18 +337,32 @@ def main():
 
         if isAtolChecked:
             st.subheader("Atol")
-            atol_0 = vec.GetAtolFeature(pd0)
-            fig, ax = plt.subplots()
-            ax.set_title("Atol [dim = 0]")
-            st.line_chart(atol_0)
+            atol = vec.GetAtolFeature([pd0, pd1])
+            # fig, ax = plt.subplots()
+            # ax.set_title("Atol [dim = 0]")
+            # st.line_chart(atol_0)
 
-            atol_1 = vec.GetAtolFeature(pd1)
-            fig, ax = plt.subplots()
-            ax.set_title("Atol [dim = 1]")
-            st.line_chart(atol_1)
+            cat = [f'{i}' for i in range(len(atol[0]))]
+            fig = figure(x_range=cat, title='Atol [dim = 0]', height=250, tools = tools)
+            fig.vbar(x=cat, top=atol[0], width=0.9, alpha=0.5)
+            fig.xaxis.axis_label = "Measures"
+            fig.yaxis.axis_label = "Clusters"
+            st.bokeh_chart(fig, use_container_width=True)
 
-            CreateDownloadButton('Atol (PH0)', atol_0)
-            CreateDownloadButton('Atol (PH1)', atol_1)
+            # atol_1 = vec.GetAtolFeature(pd1)
+            # fig, ax = plt.subplots()
+            # ax.set_title("Atol [dim = 1]")
+            # st.line_chart(atol_1)
+
+            cat = [f'{i}' for i in range(len(atol[1]))]
+            fig = figure(x_range=cat, title='Atol [dim = 1]', height=250, tools = tools)
+            fig.vbar(x=cat, top=atol[1], width=0.9, alpha=0.5)
+            fig.xaxis.axis_label = "Measures"
+            fig.yaxis.axis_label = "Clusters"
+            st.bokeh_chart(fig, use_container_width=True)
+
+            CreateDownloadButton('Atol (PH0)', atol[0])
+            CreateDownloadButton('Atol (PH1)', atol[1])
             st.markdown('#')
 
         isCarlsCoordsChecked = st.checkbox('Carlsson Coordinates')
@@ -343,14 +370,26 @@ def main():
         if isCarlsCoordsChecked:
             st.subheader("Carlsson Coordinates")
             carlsCoords_0 = vec.GetCarlssonCoordinatesFeature(pd0)
-            fig, ax = plt.subplots()
-            ax.set_title("Carlsson Coordinates [dim = 0]")
-            st.line_chart(carlsCoords_0)
+            # fig, ax = plt.subplots()
+            # ax.set_title("Carlsson Coordinates [dim = 0]")
+            # st.line_chart(carlsCoords_0)
+
+            cat = [f'F{i+1}' for i in range(len(carlsCoords_0))]
+            fig = figure(x_range=cat, title='Carlsson Coordinates [dim = 0]', height=250, tools = tools)
+            fig.vbar(x=cat, top=carlsCoords_0, width=0.9, alpha=0.5)
+            fig.xaxis.axis_label = "Feature"
+            st.bokeh_chart(fig, use_container_width=True)
 
             carlsCoords_1 = vec.GetCarlssonCoordinatesFeature(pd1)
-            fig, ax = plt.subplots()
-            ax.set_title("Carlsson Coordinates [dim = 1]")
-            st.line_chart(carlsCoords_1)
+            # fig, ax = plt.subplots()
+            # ax.set_title("Carlsson Coordinates [dim = 1]")
+            # st.line_chart(carlsCoords_1)
+
+            cat = [f'F{i+1}' for i in range(len(carlsCoords_1))]
+            fig = figure(x_range=cat, title='Carlsson Coordinates [dim = 1]', height=250, tools = tools)
+            fig.vbar(x=cat, top=carlsCoords_1, width=0.9, alpha=0.5)
+            fig.xaxis.axis_label = "Feature"
+            st.bokeh_chart(fig, use_container_width=True)
 
             CreateDownloadButton('Carlsson Coordinates (PH0)', carlsCoords_0)
             CreateDownloadButton('Carlsson Coordinates (PH1)', carlsCoords_1)
@@ -405,14 +444,28 @@ def main():
         if isTopologicalVectorChecked:
             st.subheader("Persistent Topological Vector")
             topologicalVector_0 = vec.GetTopologicalVectorFeature(pd0)
-            fig, ax = plt.subplots()
-            ax.set_title("Persistent Topological Vector [dim = 0]")
-            st.line_chart(topologicalVector_0)
+            # fig, ax = plt.subplots()
+            # ax.set_title("Persistent Topological Vector [dim = 0]")
+            # st.line_chart(topologicalVector_0)
+
+            cat = [f'{i}' for i in range(len(topologicalVector_0))]
+            fig = figure(x_range=cat, title='Persistent Topological Vector [dim = 0]', height=250, tools = tools)
+            fig.vbar(x=cat, top=topologicalVector_0, width=0.8, alpha=0.5)
+            fig.xaxis.axis_label = "Element"
+            fig.yaxis.axis_label = "Threshold"
+            st.bokeh_chart(fig, use_container_width=True)
 
             topologicalVector_1 = vec.GetTopologicalVectorFeature(pd1)
-            fig, ax = plt.subplots()
-            ax.set_title("Persistent Topological Vector [dim = 1]")
-            st.line_chart(topologicalVector_1)
+            # fig, ax = plt.subplots()
+            # ax.set_title("Persistent Topological Vector [dim = 1]")
+            # st.line_chart(topologicalVector_1)
+            
+            cat = [f'{i}' for i in range(len(topologicalVector_0))]
+            fig = figure(x_range=cat, title='Persistent Topological Vector [dim = 1]', height=250, tools = tools)
+            fig.vbar(x=cat, top=topologicalVector_1, width=0.8, alpha=0.5)
+            fig.xaxis.axis_label = "Element"
+            fig.yaxis.axis_label = "Threshold"
+            st.bokeh_chart(fig, use_container_width=True)
 
             CreateDownloadButton('Persistent Topological Vector (PH0)', topologicalVector_0)
             CreateDownloadButton('Persistent Topological Vector (PH1)', topologicalVector_1)
@@ -423,14 +476,26 @@ def main():
         if isPersTropCoordsChecked:
             st.subheader("Persistent Tropical Coordinates")
             persTropCoords_0 = vec.GetPersTropicalCoordinatesFeature(pd0)
-            fig, ax = plt.subplots()
-            ax.set_title("Persistent Tropical Coordinates [dim = 0]")
-            st.line_chart(persTropCoords_0)
+            # fig, ax = plt.subplots()
+            # ax.set_title("Persistent Tropical Coordinates [dim = 0]")
+            # st.line_chart(persTropCoords_0)
+
+            cat = [f'{i}' for i in range(len(persTropCoords_0))]
+            fig = figure(x_range=cat, title='Persistent Tropical Coordinates [dim = 0]', height=250, tools = tools)
+            fig.vbar(x=cat, top=persTropCoords_0, width=0.9, alpha=0.5)
+            fig.xaxis.axis_label = "Coordinate"
+            st.bokeh_chart(fig, use_container_width=True)
 
             persTropCoords_1 = vec.GetPersTropicalCoordinatesFeature(pd1)
-            fig, ax = plt.subplots()
-            ax.set_title("Persistent Tropical Coordinates [dim = 1]")
-            st.line_chart(persTropCoords_1)
+            # fig, ax = plt.subplots()
+            # ax.set_title("Persistent Tropical Coordinates [dim = 1]")
+            # st.line_chart(persTropCoords_1)
+
+            cat = [f'{i}' for i in range(len(persTropCoords_1))]
+            fig = figure(x_range=cat, title='Persistent Tropical Coordinates [dim = 1]', height=250, tools = tools)
+            fig.vbar(x=cat, top=persTropCoords_1, width=0.9, alpha=0.5)
+            fig.xaxis.axis_label = "Coordinate"
+            st.bokeh_chart(fig, use_container_width=True)
 
             CreateDownloadButton('Persistent Tropical Coordinates (PH0)', persTropCoords_0)
             CreateDownloadButton('Persistent Tropical Coordinates (PH1)', persTropCoords_1)
