@@ -32,4 +32,4 @@ typing_extensions==4.3.0
 wincertstore==0.2
 wrapt==1.14.1
 teaspoon==1.3.0
-sympy==1.11.1
+latex==0.7.0

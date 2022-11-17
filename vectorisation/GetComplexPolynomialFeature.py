@@ -13,9 +13,9 @@ def GetComplexPolynomialFeature(barcode, thres = 10, pol_type='R'):
         complexPolynomial = representations.vector_methods.ComplexPolynomial(threshold = thres, 
                                                                              polynomial_type = pol_type)
         feature_vector = complexPolynomial.fit_transform([barcode]).flatten()
-        feature_vector = np.concatenate([np.array([np.real(i), np.imag(i)]) 
-                                         for i in feature_vector])
+        feature_vector = np.stack((feature_vector.real,feature_vector.imag),-1)
+
     else:
-    	feature_vector = np.zeros(2*thres)
+    	feature_vector = np.zeros((thres,2))
         
     return feature_vector
