@@ -5,6 +5,7 @@ Cython==0.29.32
 Deprecated==1.2.13
 fonttools==4.37.2
 gudhi==3.6.0
+hdbscan==0.8.28
 hopcroftkarp==1.2.5
 Jinja2==3.1.2
 joblib==1.2.0
