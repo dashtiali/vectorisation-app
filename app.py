@@ -93,10 +93,11 @@ def main():
         footer {visibility: hidden;}
         </style>
         """
+    st.set_page_config(page_title="Vectorization")
     st.markdown(hide_menu_style, unsafe_allow_html=True)
+    st.title("Persistent Barcodes Vectorization")
+    st.info('To compute and visualize featurized PH barcodes')
 
-    st.title("Featurized Persistent Barcode")
-    
     tools = ["pan","box_zoom", "wheel_zoom", "box_select", "hover", "reset"]
     
     menu = ["Cifar10","Fashion MNIST","Outex68", "Shrec14", "Custom"]
@@ -104,7 +105,7 @@ def main():
 
     mainPath = os.getcwd()
 
-    filtrationType = ""
+    filtrationType = "Cubical Complex"
 
     if choice == "Cifar10":
         file_path = mainPath + r"/data/cifar10.png"
@@ -115,6 +116,7 @@ def main():
         file_path = mainPath + r"/data/Outex1.bmp"
     elif choice == "Shrec14":
         file_path = mainPath + r"/data/shrec14_data_0.csv"
+        filtrationType = "Heat Kernel Signature"
     else:
         file_path = st.sidebar.file_uploader("Upload Image",type=['png','jpeg','jpg','bmp','csv'])
 
@@ -135,6 +137,9 @@ def main():
         isPointCloud = (choice == "Shrec14" or 
                         (choice == "Custom" and os.path.splitext(file_path.name)[1] == ".csv"))
 
+        if (choice == "Custom" and os.path.splitext(file_path.name)[1] == ".csv"):
+            filtrationType = "Rips"
+        
         if isPointCloud:
             input_data = load_csv(file_path)
         else:
@@ -142,11 +147,19 @@ def main():
 
         if isShowImageChecked:
             if isPointCloud:
-                fig = px.scatter_3d(input_data, x='x', y='y', z='z')
-                st.plotly_chart(fig)
+                fig = px.scatter_3d(input_data, x='x', y='y', z='z', color='z')
+                minValue = np.floor(input_data.to_numpy().min())
+                maxValue = np.ceil(input_data.to_numpy().max())
+                axisRange = [minValue, maxValue]
+                fig.update_layout(
+                scene = dict(xaxis = dict(nticks=5, range=axisRange,),
+                             yaxis = dict(nticks=5, range=axisRange,),
+                             zaxis = dict(nticks=5, range=axisRange,),),
+                             margin=dict(r=0, l=0, b=0, t=0))
+                st.plotly_chart(fig, use_container_width=True)
             else:
                 st.image(input_data,width=250)
-
+        
         st.caption(f"Filtration type: {filtrationType}")
         
         if(choice == "Shrec14"):
@@ -154,10 +167,15 @@ def main():
             pd1 = pd.read_csv(mainPath + r"/data/shrec14_data_0_ph1.csv").to_numpy()
         else:
             pd0, pd1 = GetPds(input_data, isPointCloud)
+        
+        visualizationMode = st.radio("Visualization Mode: ", ('Custom Selection', 'Select All'), horizontal=True)
+        st.markdown("""---""")
 
-        isPersBarChecked = st.checkbox('Persistence Barcodes')
+        visualizeAll = visualizationMode == 'Select All'
+        
+        isPersBarChecked = False if visualizeAll else st.checkbox('Persistence Barcodes')
 
-        if isPersBarChecked:
+        if isPersBarChecked or visualizeAll:
             st.subheader("Persistence Barcodes")
             source = ColumnDataSource(data={'left': pd0[:,0], 'right': pd0[:,1], 'y': range(len(pd0[:,0]))})
             fig = figure(title='Persistence Barcode [dim = 0]', height=250, tools = tools)
@@ -173,18 +191,18 @@ def main():
             CreateDownloadButton('PH1', pd1)
             st.markdown('#')
 
-        isPersDiagChecked = st.checkbox('Persistence Diagram')
+        isPersDiagChecked = False if visualizeAll else st.checkbox('Persistence Diagram')
 
-        if isPersDiagChecked:
+        if isPersDiagChecked or visualizeAll:
             st.subheader("Persistence Diagram")
             fig, ax = plt.subplots()
             persim.plot_diagrams([pd0,pd1],labels= ["H0", "H1"], ax=ax)
             ax.set_title("Persistence Diagram")
             st.pyplot(fig)
         
-        isBettiCurveChecked = st.checkbox('Betti Curve')
+        isBettiCurveChecked = False if visualizeAll else st.checkbox('Betti Curve')
 
-        if isBettiCurveChecked:
+        if isBettiCurveChecked or visualizeAll:
             tools = ["pan","box_zoom", "wheel_zoom", "box_select", "hover", "reset"]
             st.subheader("Betti Curve")
             st.slider("Resolution", 0, 100, value=60, step=1, key='BettiCurveRes')
@@ -205,9 +223,9 @@ def main():
             CreateDownloadButton('Betti Curve (PH1)', Btt_1)
             st.markdown('#')
 
-        isPersStatsChecked = st.checkbox('Persistent Statistics')
+        isPersStatsChecked = False if visualizeAll else st.checkbox('Persistent Statistics')
 
-        if isPersStatsChecked:
+        if isPersStatsChecked or visualizeAll:
             st.subheader("Persistent Statistics")
             stat_0 = vec.GetPersStats(pd0)
             stat_1 = vec.GetPersStats(pd1)
@@ -225,9 +243,9 @@ def main():
             CreateDownloadButton('Persistent Stats (PH1)', stat_1)
             st.markdown('#')
 
-        isPersImgChecked = st.checkbox('Persistence Image')
+        isPersImgChecked = False if visualizeAll else st.checkbox('Persistence Image')
 
-        if isPersImgChecked:
+        if isPersImgChecked or visualizeAll:
             st.subheader("Persistence Image")
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersistenceImageRes')
 
@@ -248,9 +266,9 @@ def main():
             CreateDownloadButton('Persistence Image (PH1)', PI_1)
             st.markdown('#')
 
-        isPersLandChecked = st.checkbox('Persistence Landscapes')
+        isPersLandChecked = False if visualizeAll else st.checkbox('Persistence Landscapes')
 
-        if isPersLandChecked:
+        if isPersLandChecked or visualizeAll:
             st.subheader("Persistence Landscapes")
             st.caption("Default parameters using persim package")
             # col1, col2 = st.columns(2)
@@ -280,9 +298,9 @@ def main():
 
             st.markdown('#')
 
-        isPersEntropyChecked = st.checkbox('Entropy Summary Function')
+        isPersEntropyChecked = False if visualizeAll else st.checkbox('Entropy Summary Function')
 
-        if isPersEntropyChecked:
+        if isPersEntropyChecked or visualizeAll:
             st.subheader("Entropy Summary Function")
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersEntropyRes')
 
@@ -302,9 +320,9 @@ def main():
             CreateDownloadButton('Entropy Summary Function (PH1)', PersEntropy_1)
             st.markdown('#')
 
-        isPersSilChecked = st.checkbox('Persistence Silhouette')
+        isPersSilChecked = False if visualizeAll else st.checkbox('Persistence Silhouette')
 
-        if isPersSilChecked:
+        if isPersSilChecked or visualizeAll:
             st.subheader("Persistence Silhouette")
             st.latex(r'''\textrm{$Weight$ $function$} = (q-p)^w''')
             st.latex(r'''\textrm{ where $w = 1$, $p$ and $q$ are called birth and death of a bar, respectively}''')
@@ -326,9 +344,9 @@ def main():
             CreateDownloadButton('Persistence Silhouette (PH1)', PersSil_1)
             st.markdown('#')
 
-        isAtolChecked = st.checkbox('Atol')
+        isAtolChecked = False if visualizeAll else st.checkbox('Atol')
 
-        if isAtolChecked:
+        if isAtolChecked or visualizeAll:
             st.subheader("Atol")
             st.slider("Number of Clusters", 2, 10, value=4, step=1, key='AtolNumberClusters')
             atol = vec.GetAtolFeature([pd0, pd1], k = st.session_state.AtolNumberClusters)
@@ -349,9 +367,9 @@ def main():
             CreateDownloadButton('Atol (PH1)', atol[1])
             st.markdown('#')
 
-        isCarlsCoordsChecked = st.checkbox('Algebraic Coordinates')
+        isCarlsCoordsChecked = False if visualizeAll else st.checkbox('Algebraic Coordinates')
 
-        if isCarlsCoordsChecked:
+        if isCarlsCoordsChecked or visualizeAll:
             st.subheader("Algebraic Coordinates")
             st.caption("Number of features = 5")
             
@@ -363,7 +381,7 @@ def main():
                 1: r"$$f_2 =\sum_i(q_+-q_i)\,(q_i -p_i)$$",
                 2: r"$$f_3 = \sum_i p_i^2(q_i - p_i)^4$$",
                 3: r"$$f_4 = \sum_i(q_+-q_i)^2\,(q_i - p_i)^4$$",
-                4: r"$$f_5 = \sum \text{max}(q_i-p_i)$$"
+                4: r"$$f_5 = \max_i\{(q_i-p_i)\}$$"
             }
 
             fig.xaxis.major_label_orientation = 0.8
@@ -377,7 +395,7 @@ def main():
                 1: r"$$f_2 =\sum_i(q_\text{max}-q_i)\,(q_i -p_i)$$",
                 2: r"$$f_3 = \sum_i p_i^2(q_i - p_i)^4$$",
                 3: r"$$f_4 = \sum_i(q_\text{max}-q_i)^2\,(q_i - p_i)^4$$",
-                4: r"$$f_5 = \sum \text{max}(q_i-p_i)$$"
+                4: r"$$f_5 = \max_i\{(q_i-p_i)\}$$"
             }
 
             fig.xaxis.major_label_orientation = 0.8
@@ -387,9 +405,9 @@ def main():
             CreateDownloadButton('Algebraic Coordinates (PH1)', carlsCoords_1)
             st.markdown('#')
 
-        isPersLifeSpanChecked = st.checkbox('Lifespan Curve')
+        isPersLifeSpanChecked = False if visualizeAll else st.checkbox('Lifespan Curve')
 
-        if isPersLifeSpanChecked:
+        if isPersLifeSpanChecked or visualizeAll:
             st.subheader("Lifespan Curve")
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersLifeSpanRes')
 
@@ -411,9 +429,9 @@ def main():
             CreateDownloadButton('Lifespan Curve (PH1)', persLifeSpan_1)
             st.markdown('#')
 
-        isComplexPolynomialChecked = st.checkbox('Complex Polynomial')
+        isComplexPolynomialChecked = False if visualizeAll else st.checkbox('Complex Polynomial')
 
-        if isComplexPolynomialChecked:
+        if isComplexPolynomialChecked or visualizeAll:
             st.subheader("Complex Polynomial")
 
             tools = ["pan","box_zoom", "wheel_zoom", "box_select", "hover", "reset"]
@@ -439,9 +457,9 @@ def main():
             CreateDownloadButton('Complex Polynomial (PH1)', CP_pd1)
             st.markdown('#')
 
-        isTopologicalVectorChecked = st.checkbox('Topological Vector')
+        isTopologicalVectorChecked = False if visualizeAll else st.checkbox('Topological Vector')
 
-        if isTopologicalVectorChecked:
+        if isTopologicalVectorChecked or visualizeAll:
             st.subheader("Topological Vector")
             st.slider("Threshold", 2, 10, value=8, step=1, key='TopologicalVectorThreshold')
 
@@ -465,9 +483,9 @@ def main():
             CreateDownloadButton('Topological Vector (PH1)', topologicalVector_1)
             st.markdown('#')
 
-        isPersTropCoordsChecked = st.checkbox('Tropical Coordinates')
+        isPersTropCoordsChecked = False if visualizeAll else st.checkbox('Tropical Coordinates')
 
-        if isPersTropCoordsChecked:
+        if isPersTropCoordsChecked or visualizeAll:
             st.subheader("Tropical Coordinates")
 
             persTropCoords_0 = vec.GetPersTropicalCoordinatesFeature(pd0)
@@ -488,14 +506,14 @@ def main():
             CreateDownloadButton('Tropical Coordinates (PH1)', persTropCoords_1)
             st.markdown('#')
 
-        isTemplateFunctionChecked = st.checkbox('Template Function')
+        isTemplateFunctionChecked = False if visualizeAll else st.checkbox('Template Function')
 
-        if isTemplateFunctionChecked:
+        if isTemplateFunctionChecked or visualizeAll:
             st.subheader("Template Function")
 
-        isTemplateSystemChecked = st.checkbox('Template System')
+        isTemplateSystemChecked = False if visualizeAll else st.checkbox('Template System')
 
-        if isTemplateSystemChecked:
+        if isTemplateSystemChecked or visualizeAll:
             st.subheader("Template System")
 
 
