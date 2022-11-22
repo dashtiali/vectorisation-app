@@ -6,8 +6,7 @@ import matplotlib.pyplot as plt
 import vectorisation as vec
 import plotly.express as px
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, Range1d, HoverTool
-from bokeh.transform import factor_cmap
+from bokeh.models import ColumnDataSource
 import pandas as pd
 import io
 import os
@@ -497,7 +496,7 @@ def main():
 
             persTropCoords_1 = vec.GetPersTropicalCoordinatesFeature(pd1)
             fig = figure(title='Tropical Coordinates [dim = 1]', height=250, tools = tools)
-            fig.vbar(x=range(len(persTropCoords_0)), top=persTropCoords_1, width=0.9, color="darkred", alpha=0.5)
+            fig.vbar(x=range(len(persTropCoords_1)), top=persTropCoords_1, width=0.9, color="darkred", alpha=0.5)
             fig.xaxis.axis_label = "Coordinate"
             fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(persTropCoords_1))}
             st.bokeh_chart(fig, use_container_width=True)
@@ -510,6 +509,24 @@ def main():
 
         if isTemplateFunctionChecked or visualizeAll:
             st.subheader("Template Function")
+
+            templateFunc_0 = vec.GetTemplateFunctionFeature(pd0)[0]
+            fig = figure(title='Template Function [dim = 0]', height=250, tools = tools)
+            fig.vbar(x=range(len(templateFunc_0)), top=templateFunc_0, width=0.9, color="darkblue", alpha=0.5)
+            # fig.xaxis.axis_label = "Coordinate"
+            fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(templateFunc_0))}
+            st.bokeh_chart(fig, use_container_width=True)
+
+            templateFunc_1 = vec.GetTemplateFunctionFeature(pd1)[0]
+            fig = figure(title='Template Function [dim = 1]', height=250, tools = tools)
+            fig.vbar(x=range(len(templateFunc_1)), top=templateFunc_1, width=0.9, color="darkred", alpha=0.5)
+            # fig.xaxis.axis_label = "Coordinate"
+            fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(templateFunc_1))}
+            st.bokeh_chart(fig, use_container_width=True)
+
+            CreateDownloadButton('Template Function (PH0)', templateFunc_0)
+            CreateDownloadButton('Template Function (PH1)', templateFunc_1)
+            st.markdown('#')
 
         isTemplateSystemChecked = False if visualizeAll else st.checkbox('Template System')
 
