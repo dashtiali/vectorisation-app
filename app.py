@@ -598,14 +598,14 @@ def main():
 
             st.markdown('#')
 
-        isTemplateSystemChecked = False if visualizeAll else st.checkbox('Adaptative Template System')
+        isTemplateSystemChecked = False if visualizeAll else st.checkbox('Adaptive Template System')
 
         if isTemplateSystemChecked or visualizeAll:
-            st.subheader("Adaptative Template System")
+            st.subheader("Adaptive Template System")
 
             if choice == 'Custom':
-                st.info('''In order to compute Adaptative Template System features, you need to select the follwoing data:''')
-                
+                st.info('''In order to compute Adaptive Template System features, you need to select the follwoing data:''')
+
                 TempSys_train_file_paths = list()
                 TempSys_train_file_paths.clear()
 
@@ -622,7 +622,7 @@ def main():
                                                             type=[selectedType], accept_multiple_files=True)
                 
                 TempSys_labels_file_path = st.file_uploader('''Select the csv file containing labels. The csv file need to have one column only with no header,
-                                                               first value is the label of the selelcted input file, then train labels follow and finally test 
+                                                               first value is the label of the selected input file, then train labels follow and finally test 
                                                                labels.''',
                                                             type=['csv'])
             else:
