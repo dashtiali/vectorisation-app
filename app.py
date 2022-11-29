@@ -1,3 +1,23 @@
+'''
+    Name: Vectorization Web App
+    This app is a part of the follwoing paper:
+
+    "A Survey of Vectorization Methods in Topological Data Analysis, 
+    Dashti A Ali, Aras Asaad, Maria Jose Jimenez, Vidit Nanda, Eduardo Paluzo-Hidalgo,
+    and Manuel Soriano-Trigueros"
+
+    Licensed: 
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+'''
+
 import streamlit as st
 from PIL import Image
 import numpy as np
@@ -17,26 +37,63 @@ import landscapes as landscapes
 
 
 @st.cache
-def load_image(image_file):
-    img = Image.open(image_file)
+def load_image(file_path):
+    '''
+	Load image file and convert to grayscale
+	:param file_path: full path of the image file
+	:type file_path: string
+	:return: numpy 2D array -- Grayscale version of the loaded image
+	'''
+    img = Image.open(file_path)
     gray_img = img.convert("L")
     return gray_img
 
+
 @st.cache
-def load_point_cloud(csv_file):
-    df = pd.read_csv(csv_file, names=['x', 'y', 'z'])
+def load_point_cloud(file_path):
+    '''
+	Load point cloud from csv file
+	:param file_path: full path of the csv file
+	:type file_path: string
+    :csv format: 3 columns without header
+	:return: numpy 2D array -- A Nx3 pandas dataframe with ['x', 'y', 'z'] headers
+	'''
+    df = pd.read_csv(file_path, names=['x', 'y', 'z'])
     return df
 
+
 @st.cache
-def load_csv(csv_file):
-    arr = pd.read_csv(csv_file).to_numpy()
+def load_csv(file_path):
+    '''
+	Load csv file
+	:param file_path: full path of the image file
+	:type file_path: string
+	:return: numpy 2D array
+	'''
+    arr = pd.read_csv(file_path).to_numpy()
     return arr
 
+
 def infty_proj(x):
+     '''
+	Replace infinity values with 256 in a nupy array
+	:param file_path: full path of the image file
+	:type x: numpy array
+	:return: numpy array
+	'''
      return (256 if ~np.isfinite(x) else x)
+
 
 @st.cache
 def GetPds(data, isPointCloud):
+    '''
+	Compute persistence barcodes (H0, H1) from image or point cloud
+	:param data: image or point cloud data
+	:type data: numpy 2D array
+    :param isPointCloud: indicates if the input data is a point cloud
+	:type isPointCloud: bolean
+	:return pd0, pd1:  numpy 2D arrays -- Persistence barcodes in dimention 0, 1
+	'''
     pd0 = pd1 = None
 
     if isPointCloud:
@@ -67,7 +124,15 @@ def GetPds(data, isPointCloud):
     
     return pd0, pd1
 
+
 def CreateDownloadButton(label, data):
+    '''
+	Create strreamlit buttons to download a numpy array as csv
+	:param label: name of the downloadable csv file
+	:type label: string
+    :param data: the numpy array to be downloaded
+	:type data: numpy 2D array
+	'''
     # Create an in-memory buffer
     with io.BytesIO() as buffer:
         # Write array to buffer
@@ -79,7 +144,13 @@ def CreateDownloadButton(label, data):
             file_name = f'{label}.csv',
             mime='text/csv')
 
+        
 def ApplyHatchPatternToChart(fig):
+    '''
+	Apply hatch pattern on chart area of a bokeh figure
+	:param fig: the bokeh figure to be changed
+	:type fig: bokeh figure
+	'''
     fig.ygrid.grid_line_color = None
     fig.xgrid.band_hatch_pattern = "/"
     fig.xgrid.band_hatch_alpha = 0.6
@@ -87,34 +158,54 @@ def ApplyHatchPatternToChart(fig):
     fig.xgrid.band_hatch_weight = 0.5
     fig.xgrid.band_hatch_scale = 10
 
-def flatten(l):
-    return [item for sublist in l for item in sublist]
+    
+def flatten(lst):
+    '''
+	Flatten a list of lists into one list
+	:param lst: the list to be flatten
+	:type lst: list
+	:return: 1D list -- The flatten list
+	'''
+    return [item for sublist in lst for item in sublist]
+
 
 def main():
+    '''
+	The main function to create the streamlit app
+	'''
+
+    # ************************************************
+    #                   CSS Styles
+    # ************************************************
     hide_menu_style = """
         <style>
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         </style>
         """
+    
+    # Populating page info and markups 
     st.set_page_config(page_title="Vectorization")
     st.markdown(hide_menu_style, unsafe_allow_html=True)
     st.title("Persistent Barcodes Vectorization")
     st.info('To compute and visualize featurized PH barcodes')
 
-    tools = ["pan","box_zoom", "wheel_zoom", "box_select", "hover", "reset"]
-    
-    menu = ["Cifar10","Fashion MNIST","Outex68", "Shrec14", "Custom"]
-    choice = st.sidebar.selectbox("Select a Dataset",menu)
-
-    mainPath = os.getcwd()
-
+    # Populating sidebar and its main menu
+    sidebar_menu = ["Cifar10","Fashion MNIST","Outex68", "Shrec14", "Custom"]
+    choice = st.sidebar.selectbox("Select a Dataset", sidebar_menu)
     filtrationType = "Cubical Complex"
+
+    # Set main and train files path
+    mainPath = os.getcwd()
     train_folder = mainPath + r"/data/training_pds/"
+
+    # Initialize or reset train file paths
     train_pd0_file_paths = []
     train_pd1_file_paths = []
     train_file_paths = []
 
+    # Populate sample file and the train files paths
+    # for selected option from the sidebar main menu
     if choice == "Cifar10":
         file_path = mainPath + r"/data/cifar10.png"
         train_pd0_file_paths = [train_folder + "cifar30_ph0.csv", train_folder + "cifar51_ph0.csv"]
@@ -140,7 +231,10 @@ def main():
             train_file_paths = st.sidebar.file_uploader('''In order to compute Atol or Adaptive Template System features, you need to select 
                                                             some data  of the same type as the selected one.''',
                                                             type=[selectedType], accept_multiple_files=True)
-
+    
+    # ************************************************
+    #              About Section (sidebar)
+    # ************************************************
     st.sidebar.markdown('#')
     st.sidebar.caption('''### About:''')
     st.sidebar.caption('''
@@ -152,8 +246,12 @@ def main():
         with each PH barcodes/diagrams and featurised PH barcodes so that users can easily download associated data to their 
         local machines.''')
 
+    # When file path is selected or changed the following wil be populated
     if file_path is not None:
         
+        # ************************************************
+        #        Load and visualize the input file
+        # ************************************************
         isShowImageChecked = st.checkbox('Input File', value=True)
         isPointCloud = (choice == "Shrec14" or 
                         (choice == "Custom" and os.path.splitext(file_path.name)[1] == ".csv"))
@@ -183,6 +281,12 @@ def main():
         
         st.caption(f"Filtration type: {filtrationType}")
         
+        # ************************************************
+        # 1. Compute persistence barcodes of the input file 
+        # 2. Load pre-computed persistence barcodes of 
+        # the train data or Load selected train files
+        # and compute their persistence barcodes
+        # ************************************************
         train_pd0s = list()
         train_pd1s = list()
         train_pd0s.clear()
@@ -208,22 +312,21 @@ def main():
         else:
             train_pd0s = [load_csv(p) for p in train_pd0_file_paths]
             train_pd1s = [load_csv(p) for p in train_pd1_file_paths]
-
-        # train_pd0s.insert(0, pd0)
-        # train_pd1s.insert(0, pd1)
-            
+        
+        # Populate radio buttons for visualize all option
         visualizeAll = False
         visualizationMode = st.radio("Visualization Mode: ", ('Custom Selection', 'Select All'), horizontal=True)
+        visualizeAll = visualizationMode == 'Select All'
         st.markdown("""---""")
 
-        visualizeAll = visualizationMode == 'Select All'
-        
-        isPersBarChecked = False if visualizeAll else st.checkbox('Persistence Barcodes')
-    
+        # Initialize chart tools for bokeh chart type
+        tools = ["pan","box_zoom", "wheel_zoom", "box_select", "hover", "reset"]
+
         # ************************************************
         #         Computing Persistence Barcodes
         # ************************************************
-        
+        isPersBarChecked = False if visualizeAll else st.checkbox('Persistence Barcodes')
+
         if isPersBarChecked or visualizeAll:
             st.subheader("Persistence Barcodes")
             source = ColumnDataSource(data={'left': pd0[:,0], 'right': pd0[:,1], 'y': range(len(pd0[:,0]))})
@@ -240,6 +343,9 @@ def main():
             CreateDownloadButton('PH1', pd1)
             st.markdown('#')
 
+        # ************************************************
+        #         Plotting Persistence Diagram
+        # ************************************************
         isPersDiagChecked = False if visualizeAll else st.checkbox('Persistence Diagram')
 
         if isPersDiagChecked or visualizeAll:
@@ -249,6 +355,9 @@ def main():
             ax.set_title("Persistence Diagram")
             st.pyplot(fig)
         
+        # ************************************************
+        #         Computing Betti Curve
+        # ************************************************
         isBettiCurveChecked = False if visualizeAll else st.checkbox('Betti Curve')
 
         if isBettiCurveChecked or visualizeAll:
@@ -272,6 +381,9 @@ def main():
             CreateDownloadButton('Betti Curve (PH1)', Btt_1)
             st.markdown('#')
 
+        # ************************************************
+        #         Computing Persistent Statistics
+        # ************************************************
         isPersStatsChecked = False if visualizeAll else st.checkbox('Persistent Statistics')
 
         if isPersStatsChecked or visualizeAll:
@@ -292,6 +404,9 @@ def main():
             CreateDownloadButton('Persistent Stats (PH1)', stat_1)
             st.markdown('#')
 
+        # ************************************************
+        #         Computing Persistence Image
+        # ************************************************
         isPersImgChecked = False if visualizeAll else st.checkbox('Persistence Image')
 
         if isPersImgChecked or visualizeAll:
@@ -314,7 +429,10 @@ def main():
             CreateDownloadButton('Persistence Image (PH0)', PI_0)
             CreateDownloadButton('Persistence Image (PH1)', PI_1)
             st.markdown('#')
-
+        
+        # ************************************************
+        #         Computing Persistence Landscapes
+        # ************************************************
         isPersLandChecked = False if visualizeAll else st.checkbox('Persistence Landscapes')
 
         if isPersLandChecked or visualizeAll:
@@ -347,6 +465,9 @@ def main():
 
             st.markdown('#')
 
+        # ************************************************
+        #       Computing Entropy Summary Function
+        # ************************************************
         isPersEntropyChecked = False if visualizeAll else st.checkbox('Entropy Summary Function')
 
         if isPersEntropyChecked or visualizeAll:
@@ -369,6 +490,9 @@ def main():
             CreateDownloadButton('Entropy Summary Function (PH1)', PersEntropy_1)
             st.markdown('#')
 
+        # ************************************************
+        #         Computing Persistence Silhouette
+        # ************************************************
         isPersSilChecked = False if visualizeAll else st.checkbox('Persistence Silhouette')
 
         if isPersSilChecked or visualizeAll:
@@ -393,6 +517,9 @@ def main():
             CreateDownloadButton('Persistence Silhouette (PH1)', PersSil_1)
             st.markdown('#')
 
+        # ************************************************
+        #               Computing Atol
+        # ************************************************
         isAtolChecked = False if visualizeAll else st.checkbox('Atol')
 
         if isAtolChecked or visualizeAll:
@@ -427,6 +554,9 @@ def main():
             
             st.markdown('#')
 
+        # ************************************************
+        #         Computing Algebraic Coordinates
+        # ************************************************
         isCarlsCoordsChecked = False if visualizeAll else st.checkbox('Algebraic Coordinates')
 
         if isCarlsCoordsChecked or visualizeAll:
@@ -465,6 +595,9 @@ def main():
             CreateDownloadButton('Algebraic Coordinates (PH1)', carlsCoords_1)
             st.markdown('#')
 
+        # ************************************************
+        #         Computing Lifespan Curve
+        # ************************************************
         isPersLifeSpanChecked = False if visualizeAll else st.checkbox('Lifespan Curve')
 
         if isPersLifeSpanChecked or visualizeAll:
@@ -489,6 +622,9 @@ def main():
             CreateDownloadButton('Lifespan Curve (PH1)', persLifeSpan_1)
             st.markdown('#')
 
+        # ************************************************
+        #         Computing Complex Polynomial
+        # ************************************************
         isComplexPolynomialChecked = False if visualizeAll else st.checkbox('Complex Polynomial')
 
         if isComplexPolynomialChecked or visualizeAll:
@@ -517,6 +653,9 @@ def main():
             CreateDownloadButton('Complex Polynomial (PH1)', CP_pd1)
             st.markdown('#')
 
+        # ************************************************
+        #         Computing Topological Vector
+        # ************************************************
         isTopologicalVectorChecked = False if visualizeAll else st.checkbox('Topological Vector')
 
         if isTopologicalVectorChecked or visualizeAll:
@@ -543,6 +682,9 @@ def main():
             CreateDownloadButton('Topological Vector (PH1)', topologicalVector_1)
             st.markdown('#')
 
+        # ************************************************
+        #         Computing Tropical Coordinates
+        # ************************************************
         isPersTropCoordsChecked = False if visualizeAll else st.checkbox('Tropical Coordinates')
 
         if isPersTropCoordsChecked or visualizeAll:
@@ -566,7 +708,9 @@ def main():
             CreateDownloadButton('Tropical Coordinates (PH1)', persTropCoords_1)
             st.markdown('#')
 
-            
+        # ************************************************
+        #         Computing Template Function
+        # ************************************************
         isTemplateFunctionChecked = False if visualizeAll else st.checkbox('Template Function')
 
         if isTemplateFunctionChecked or visualizeAll:
@@ -591,10 +735,14 @@ def main():
 
             st.markdown('#')
 
+        # ************************************************
+        #         Computing Adaptive Template System
+        # ************************************************
         isTemplateSystemChecked = False if visualizeAll else st.checkbox('Adaptive Template System')
 
         if isTemplateSystemChecked or visualizeAll:
             st.subheader("Adaptive Template System")
+            st.caption("Clustering method: GMM")
 
             if len(train_pd0s) > 0 and len(train_pd1s) > 0:
                 labels = [i for i in range(len(train_pd0s))]
@@ -618,10 +766,10 @@ def main():
             else:
                 st.error('''In order to compute Adaptive Template System features, you need to select at least 
                             one more data of the same type as the selected one. Use the second uploader from the sidebar on the left.''')
-        
-        
+
+    # Display error message if no file is selected 
     else:
-        st.error('''Please upload a file to start.''')
+        st.error("Please upload a file to start.")
 
 if __name__ == '__main__':
     main()
