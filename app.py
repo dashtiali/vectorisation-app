@@ -23,9 +23,14 @@ def load_image(image_file):
     return gray_img
 
 @st.cache
-def load_csv(csv_file):
+def load_point_cloud(csv_file):
     df = pd.read_csv(csv_file, names=['x', 'y', 'z'])
     return df
+
+@st.cache
+def load_csv(csv_file):
+    arr = pd.read_csv(csv_file).to_numpy()
+    return arr
 
 def infty_proj(x):
      return (256 if ~np.isfinite(x) else x)
@@ -105,29 +110,36 @@ def main():
     mainPath = os.getcwd()
 
     filtrationType = "Cubical Complex"
+    train_folder = mainPath + r"/data/training_pds/"
+    train_pd0_file_paths = []
+    train_pd1_file_paths = []
     train_file_paths = []
 
     if choice == "Cifar10":
         file_path = mainPath + r"/data/cifar10.png"
-        train_file_paths = [mainPath + r"/data/cifar30.png", mainPath + r"/data/cifar51.png"]
+        train_pd0_file_paths = [train_folder + "cifar30_ph0.csv", train_folder + "cifar51_ph0.csv"]
+        train_pd1_file_paths = [train_folder + "cifar30_ph1.csv", train_folder + "cifar51_ph1.csv"]
     elif choice == "Fashion MNIST":
         file_path = mainPath + r"/data/FashionMNIST.jpg"
-        train_file_paths = [mainPath + r"/data/FashionMNIST21.jpg", mainPath + r"/data/FashionMNIST75.jpg"]
+        train_pd0_file_paths = [train_folder + "FashionMNIST21_ph0.csv", train_folder + "FashionMNIST502_ph0.csv"]
+        train_pd1_file_paths = [train_folder + "FashionMNIST21_ph1.csv", train_folder + "FashionMNIST502_ph1.csv"]
         filtrationType = "Edge growing"
     elif choice == "Outex68":
         file_path = mainPath + r"/data/Outex1.bmp"
-        train_file_paths = [mainPath + r"/data/Outex2.bmp", mainPath + r"/data/Outex3.bmp"]
+        train_pd0_file_paths = [train_folder + "Outex2_ph0.csv", train_folder + "Outex3_ph0.csv"]
+        train_pd1_file_paths = [train_folder + "Outex2_ph1.csv", train_folder + "Outex3_ph1.csv"]
     elif choice == "Shrec14":
         file_path = mainPath + r"/data/shrec14_data_0.csv"
-        train_file_paths = [mainPath + r"/data/shrec14_data_0.csv"]
+        train_pd0_file_paths = [train_folder + "shrec14_data_1_ph0.csv", train_folder + "shrec14_data_2_ph0.csv"]
+        train_pd1_file_paths = [train_folder + "shrec14_data_1_ph1.csv", train_folder + "shrec14_data_2_ph1.csv"]
         filtrationType = "Heat Kernel Signature"
     else:
         file_path = st.sidebar.file_uploader("Upload Image Or Point Cloud",type=['png','jpeg','jpg','bmp','csv'])
         if file_path is not None:
             selectedType = os.path.splitext(file_path.name)[1]
-        #     train_file_paths = st.sidebar.file_uploader('''In order to compute Atol or Template Function features, you need to select 
-        #                                                     at least one more data of the same type as the selected one.''',
-        #                                                     type=[selectedType], accept_multiple_files=True)
+            train_file_paths = st.sidebar.file_uploader('''In order to compute Atol or Adaptive Template System features, you need to select 
+                                                            some data  of the same type as the selected one.''',
+                                                            type=[selectedType], accept_multiple_files=True)
 
     st.sidebar.markdown('#')
     st.sidebar.caption('''### About:''')
@@ -150,7 +162,7 @@ def main():
             filtrationType = "Rips"
         
         if isPointCloud:
-            input_data = load_csv(file_path)
+            input_data = load_point_cloud(file_path)
         else:
             input_data = load_image(file_path)
 
@@ -177,37 +189,41 @@ def main():
         train_pd1s.clear()
 
         if(choice == "Shrec14"):
-            pd0 = pd.read_csv(mainPath + r"/data/shrec14_data_0_ph0.csv").to_numpy()
-            pd1 = pd.read_csv(mainPath + r"/data/shrec14_data_0_ph1.csv").to_numpy()
-
-            # train_pd0s = [pd.read_csv(mainPath + r"/data/shrec14_data_1_ph0.csv").to_numpy(),
-            #               pd.read_csv(mainPath + r"/data/shrec14_data_2_ph0.csv").to_numpy()]
-            # train_pd1s = [pd.read_csv(mainPath + r"/data/shrec14_data_1_ph1.csv").to_numpy(),
-            #               pd.read_csv(mainPath + r"/data/shrec14_data_2_ph1.csv").to_numpy()]
+            pd0 = load_csv(mainPath + r"/data/shrec14_data_0_ph0.csv")
+            pd1 = load_csv(mainPath + r"/data/shrec14_data_0_ph1.csv")
         else:
             pd0, pd1 = GetPds(input_data, isPointCloud)
 
-        #     if train_file_paths is not None:
-        #         for file in train_file_paths:
-        #             if isPointCloud:
-        #                 file_data = load_csv(file)
-        #             else:
-        #                 file_data = load_image(file)
+        if (choice == "Custom"):
+            if train_file_paths is not None:
+                for file in train_file_paths:
+                    if isPointCloud:
+                        file_data = load_point_cloud(file)
+                    else:
+                        file_data = load_image(file)
 
-        #             file_pd0, file_pd1 = GetPds(file_data, isPointCloud)
-        #             train_pd0s.append(file_pd0)
-        #             train_pd1s.append(file_pd1)
+                    file_pd0, file_pd1 = GetPds(file_data, isPointCloud)
+                    train_pd0s.append(file_pd0)
+                    train_pd1s.append(file_pd1)
+        else:
+            train_pd0s = [load_csv(p) for p in train_pd0_file_paths]
+            train_pd1s = [load_csv(p) for p in train_pd1_file_paths]
 
         # train_pd0s.insert(0, pd0)
         # train_pd1s.insert(0, pd1)
-
+            
+        visualizeAll = False
         visualizationMode = st.radio("Visualization Mode: ", ('Custom Selection', 'Select All'), horizontal=True)
         st.markdown("""---""")
 
         visualizeAll = visualizationMode == 'Select All'
         
         isPersBarChecked = False if visualizeAll else st.checkbox('Persistence Barcodes')
-
+    
+        # ************************************************
+        #         Computing Persistence Barcodes
+        # ************************************************
+        
         if isPersBarChecked or visualizeAll:
             st.subheader("Persistence Barcodes")
             source = ColumnDataSource(data={'left': pd0[:,0], 'right': pd0[:,1], 'y': range(len(pd0[:,0]))})
@@ -381,57 +397,33 @@ def main():
 
         if isAtolChecked or visualizeAll:
             st.subheader("Atol")
-            if choice == 'Custom':
-                Atol_train_file_paths = list()
-                Atol_train_file_paths.clear()
-                Atol_train_file_paths = st.file_uploader('''In order to compute Atol features, you need to select 
-                                                            at least one more data of the same type as the selected one.''',
-                                                            type=[selectedType], accept_multiple_files=True)
-            else:
-                Atol_train_file_paths = train_file_paths
 
-            if len(Atol_train_file_paths) > 0:
-                Atol_train_pd0s = list()
-                Atol_train_pd0s.clear()
-                Atol_train_pd1s = list()
-                Atol_train_pd1s.clear()
-
-                if(choice == "Shrec14"):
-                    Atol_train_pd0s = [pd.read_csv(mainPath + r"/data/shrec14_data_1_ph0.csv").to_numpy(),
-                                       pd.read_csv(mainPath + r"/data/shrec14_data_2_ph0.csv").to_numpy()]
-                    Atol_train_pd1s = [pd.read_csv(mainPath + r"/data/shrec14_data_1_ph1.csv").to_numpy(),
-                                       pd.read_csv(mainPath + r"/data/shrec14_data_2_ph1.csv").to_numpy()]
-                else:
-                    for file in Atol_train_file_paths:
-                        if isPointCloud:
-                            file_data = load_csv(file)
-                        else:
-                            file_data = load_image(file)
-
-                        file_pd0, file_pd1 = GetPds(file_data, isPointCloud)
-                        Atol_train_pd0s.append(file_pd0)
-                        Atol_train_pd1s.append(file_pd1)
-
+            if len(train_pd0s) > 0 and len(train_pd1s) > 0:
+                Atol_train_pd0s = train_pd0s
+                Atol_train_pd1s = train_pd1s
                 Atol_train_pd0s.insert(0, pd0)
                 Atol_train_pd1s.insert(0, pd1)
-                if len(Atol_train_pd0s) > 0 and len(Atol_train_pd1s) > 0:
-                    st.slider("Number of Clusters", 2, 10, value=4, step=1, key='AtolNumberClusters')
-                    atol_0 = vec.GetAtolFeature(Atol_train_pd0s, k = st.session_state.AtolNumberClusters)
-                    cat = [f'{i}' for i in range(len(atol_0[0]))]
-                    fig = figure(x_range=cat, title='Atol [dim = 0]', height=250, tools = tools)
-                    fig.vbar(x=cat, top=atol_0[0], width=0.9, color="darkblue", alpha=0.5)
-                    fig.xaxis.axis_label = "Clusters"
-                    st.bokeh_chart(fig, use_container_width=True)
 
-                    atol_1 = vec.GetAtolFeature(Atol_train_pd1s, k = st.session_state.AtolNumberClusters)
-                    cat = [f'{i}' for i in range(len(atol_1[0]))]
-                    fig = figure(x_range=cat, title='Atol [dim = 1]', height=250, tools = tools)
-                    fig.vbar(x=cat, top=atol_1[0], width=0.9, color="darkred", alpha=0.5)
-                    fig.xaxis.axis_label = "Clusters"
-                    st.bokeh_chart(fig, use_container_width=True)
+                st.slider("Number of Clusters", 2, 10, value=4, step=1, key='AtolNumberClusters')
+                atol_0 = vec.GetAtolFeature(Atol_train_pd0s, k = st.session_state.AtolNumberClusters)
+                cat = [f'{i}' for i in range(len(atol_0[0]))]
+                fig = figure(x_range=cat, title='Atol [dim = 0]', height=250, tools = tools)
+                fig.vbar(x=cat, top=atol_0[0], width=0.9, color="darkblue", alpha=0.5)
+                fig.xaxis.axis_label = "Clusters"
+                st.bokeh_chart(fig, use_container_width=True)
 
-                    CreateDownloadButton('Atol (PH0)', atol_0[0])
-                    CreateDownloadButton('Atol (PH1)', atol_1[0])
+                atol_1 = vec.GetAtolFeature(Atol_train_pd1s, k = st.session_state.AtolNumberClusters)
+                cat = [f'{i}' for i in range(len(atol_1[0]))]
+                fig = figure(x_range=cat, title='Atol [dim = 1]', height=250, tools = tools)
+                fig.vbar(x=cat, top=atol_1[0], width=0.9, color="darkred", alpha=0.5)
+                fig.xaxis.axis_label = "Clusters"
+                st.bokeh_chart(fig, use_container_width=True)
+
+                CreateDownloadButton('Atol (PH0)', atol_0[0])
+                CreateDownloadButton('Atol (PH1)', atol_1[0])
+            else:
+                st.error('''In order to compute Atol features, you need to select at least 
+                            one more data of the same type as the selected one. Use the second uploader from the sidebar on the left.''')
             
             st.markdown('#')
 
@@ -574,6 +566,7 @@ def main():
             CreateDownloadButton('Tropical Coordinates (PH1)', persTropCoords_1)
             st.markdown('#')
 
+            
         isTemplateFunctionChecked = False if visualizeAll else st.checkbox('Template Function')
 
         if isTemplateFunctionChecked or visualizeAll:
@@ -603,34 +596,30 @@ def main():
         if isTemplateSystemChecked or visualizeAll:
             st.subheader("Adaptive Template System")
 
-            if choice == 'Custom':
-                st.info('''In order to compute Adaptive Template System features, you need to select the follwoing data:''')
+            if len(train_pd0s) > 0 and len(train_pd1s) > 0:
+                labels = [i for i in range(len(train_pd0s))]
+                st.slider("Number of Clusters", 1, 15, value=10, step=1, key='TempSysNComp')
+                TempSys_0 = vec.GetAdaptativeSystemFeature(train_pd0s, [pd0], labels, d=st.session_state.TempSysNComp)
+                cat = [f'{i}' for i in range(len(TempSys_0[0]))]
+                fig = figure(x_range=cat, title='Adaptive Template System [dim = 0]', height=250, tools = tools)
+                fig.vbar(x=cat, top=TempSys_0[0], width=0.9, color="darkblue", alpha=0.5)
+                fig.xaxis.axis_label = "Clusters"
+                st.bokeh_chart(fig, use_container_width=True)
 
-                TempSys_train_file_paths = list()
-                TempSys_train_file_paths.clear()
+                TempSys_1 = vec.GetAdaptativeSystemFeature(train_pd1s, [pd1], labels, d=st.session_state.TempSysNComp)
+                cat = [f'{i}' for i in range(len(TempSys_1[0]))]
+                fig = figure(x_range=cat, title='Adaptive Template System [dim = 1]', height=250, tools = tools)
+                fig.vbar(x=cat, top=TempSys_1[0], width=0.9, color="darkred", alpha=0.5)
+                fig.xaxis.axis_label = "Clusters"
+                st.bokeh_chart(fig, use_container_width=True)
 
-                TempSys_test_file_paths = list()
-                TempSys_test_file_paths.clear()
-
-                TempSys_labels_file_path = list()
-                TempSys_labels_file_path.clear()
-
-                TempSys_train_file_paths = st.file_uploader('''Select some data of the same type for training.''',
-                                                            type=[selectedType], accept_multiple_files=True)
-                
-                TempSys_test_file_paths = st.file_uploader('''Select some data of the same type for testing.''',
-                                                            type=[selectedType], accept_multiple_files=True)
-                
-                TempSys_labels_file_path = st.file_uploader('''Select the csv file containing labels. The csv file need to have one column only with no header,
-                                                               first value is the label of the selected input file, then train labels follow and finally test 
-                                                               labels.''',
-                                                            type=['csv'])
+                CreateDownloadButton('Adaptive Template System (PH0)', TempSys_0[0])
+                CreateDownloadButton('Adaptive Template System (PH1)', TempSys_1[0])
             else:
-                TempSys_train_file_paths = train_file_paths
-                TempSys_test_file_paths = train_file_paths
-                TempSys_labels_file_path = train_file_paths
-            
-                
+                st.error('''In order to compute Adaptive Template System features, you need to select at least 
+                            one more data of the same type as the selected one. Use the second uploader from the sidebar on the left.''')
+        
+        
     else:
         st.error('''Please upload a file to start.''')
 
