@@ -34,6 +34,9 @@ from scipy.spatial import distance
 from ripser import ripser
 import persim
 import landscapes as landscapes
+import logging
+import traceback
+import datetime
 
 
 @st.cache
@@ -307,8 +310,11 @@ def main():
                         file_data = load_image(file)
 
                     file_pd0, file_pd1 = GetPds(file_data, isPointCloud)
-                    train_pd0s.append(file_pd0)
-                    train_pd1s.append(file_pd1)
+
+                    if len(file_pd0) != 0:
+                        train_pd0s.append(file_pd0)
+                    if len(file_pd1) != 0:
+                        train_pd1s.append(file_pd1)
         else:
             train_pd0s = [load_csv(p) for p in train_pd0_file_paths]
             train_pd1s = [load_csv(p) for p in train_pd1_file_paths]
@@ -329,12 +335,19 @@ def main():
 
         if isPersBarChecked or visualizeAll:
             st.subheader("Persistence Barcodes")
-            source = ColumnDataSource(data={'left': pd0[:,0], 'right': pd0[:,1], 'y': range(len(pd0[:,0]))})
+            
+            if len(pd0) != 0:
+                source = ColumnDataSource(data={'left': pd0[:,0], 'right': pd0[:,1], 'y': range(len(pd0[:,0]))})
+            else:
+                source = ColumnDataSource(data={'left': [], 'right': [], 'y': []})
             fig = figure(title='Persistence Barcode [dim = 0]', height=250, tools = tools)
             fig.hbar(y='y', left ='left', right='right', height=0.1, alpha=0.7, source=source)
             st.bokeh_chart(fig, use_container_width=True)
             
-            source = ColumnDataSource(data={'left': pd1[:,0], 'right': pd1[:,1], 'y': range(len(pd1[:,0]))})
+            if len(pd1) != 0:
+                source = ColumnDataSource(data={'left': pd1[:,0], 'right': pd1[:,1], 'y': range(len(pd1[:,0]))})
+            else:
+                source = ColumnDataSource(data={'left': [], 'right': [], 'y': []})
             fig = figure(title='Persistence Barcode [dim = 1]', height=250, tools = tools)
             fig.hbar(y='y', left ='left', right='right', height=0.1, color="darkorange", alpha=0.7, source=source)
             st.bokeh_chart(fig, use_container_width=True)
@@ -351,7 +364,17 @@ def main():
         if isPersDiagChecked or visualizeAll:
             st.subheader("Persistence Diagram")
             fig, ax = plt.subplots()
-            persim.plot_diagrams([pd0,pd1],labels= ["H0", "H1"], ax=ax)
+            dgms = []
+
+            if len(pd0) != 0:
+                dgms.append(pd0)
+            
+            if len(pd1) != 0:
+                dgms.append(pd1)
+
+            if len(dgms) != 0:
+                persim.plot_diagrams(dgms,labels= ["H0", "H1"], ax=ax)
+            
             ax.set_title("Persistence Diagram")
             st.pyplot(fig)
         
@@ -365,14 +388,24 @@ def main():
             st.subheader("Betti Curve")
             st.slider("Resolution", 0, 100, value=60, step=1, key='BettiCurveRes')
 
-            Btt_0 = vec.GetBettiCurveFeature(pd0, st.session_state.BettiCurveRes)
-            source = ColumnDataSource(data={'x': range(0, len(Btt_0)), 'y': Btt_0})
+            if len(pd0) != 0:
+                Btt_0 = vec.GetBettiCurveFeature(pd0, st.session_state.BettiCurveRes)
+                source = ColumnDataSource(data={'x': range(0, len(Btt_0)), 'y': Btt_0})
+            else:
+                Btt_0 = []
+                source = ColumnDataSource(data={'x': [], 'y': Btt_0})
+            
             fig = figure(x_range=(0, len(Btt_0)),title='Betti Curve [dim = 0]', height=250, tools = tools)
             fig.line(x='x', y='y', color='blue', alpha=0.5, line_width=2, source=source)
             st.bokeh_chart(fig, use_container_width=True)
 
-            Btt_1 = vec.GetBettiCurveFeature(pd1, st.session_state.BettiCurveRes)
-            source = ColumnDataSource(data={'x': range(0, len(Btt_1)), 'y': Btt_1})
+            if len(pd1) != 0:
+                Btt_1 = vec.GetBettiCurveFeature(pd1, st.session_state.BettiCurveRes)
+                source = ColumnDataSource(data={'x': range(0, len(Btt_1)), 'y': Btt_1})
+            else:
+                Btt_1 = []
+                source = ColumnDataSource(data={'x': [], 'y': Btt_1})
+            
             fig = figure(x_range=(0, len(Btt_1)), title='Betti Curve [dim = 1]', height=250, tools = tools)
             fig.line(x='x', y='y', color='red', alpha=0.5, line_width=2, source=source)
             st.bokeh_chart(fig, use_container_width=True)
@@ -388,6 +421,7 @@ def main():
 
         if isPersStatsChecked or visualizeAll:
             st.subheader("Persistent Statistics")
+            
             stat_0 = vec.GetPersStats(pd0)
             stat_1 = vec.GetPersStats(pd1)
             df = pd.DataFrame(np.array((stat_0[0:6], stat_1[0:6])), index=['PH(0)', 'PH(1)'])
@@ -414,15 +448,25 @@ def main():
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersistenceImageRes')
 
             col1, col2 = st.columns(2)
-            PI_0 = vec.GetPersImageFeature(pd0, st.session_state.PersistenceImageRes)
             fig, ax = plt.subplots()
-            ax.imshow(np.flip(np.reshape(PI_0, [st.session_state.PersistenceImageRes,st.session_state.PersistenceImageRes]), 0))
+
+            if len(pd0) != 0:
+                PI_0 = vec.GetPersImageFeature(pd0, st.session_state.PersistenceImageRes)
+                ax.imshow(np.flip(np.reshape(PI_0, [st.session_state.PersistenceImageRes,st.session_state.PersistenceImageRes]), 0))
+            else:
+                PI_0 = []
+
             ax.set_title("Persistence Image [dim = 0]")
             col1.pyplot(fig)
 
-            PI_1 = vec.GetPersImageFeature(pd1, st.session_state.PersistenceImageRes)
             fig, ax = plt.subplots()
-            ax.imshow(np.flip(np.reshape(PI_1, [st.session_state.PersistenceImageRes,st.session_state.PersistenceImageRes]), 0))
+
+            if len(pd1) != 0:
+                PI_1 = vec.GetPersImageFeature(pd1, st.session_state.PersistenceImageRes)
+                ax.imshow(np.flip(np.reshape(PI_1, [st.session_state.PersistenceImageRes,st.session_state.PersistenceImageRes]), 0))
+            else:
+                PI_1 = []
+                
             ax.set_title("Persistence Image [dim = 1]")
             col2.pyplot(fig)
 
@@ -441,26 +485,37 @@ def main():
             # col1, col2 = st.columns(2)
             fig, ax = plt.subplots()
             fig.set_figheight(3)
-            PL_0 = landscapes.visuals.PersLandscapeExact([pd0],hom_deg=0)
-            landscapes.visuals.plot_landscape_simple(PL_0, ax=ax)
+
+            if len(pd0) != 0:
+                PL_0 = landscapes.visuals.PersLandscapeExact([pd0],hom_deg=0)
+                landscapes.visuals.plot_landscape_simple(PL_0, ax=ax)
+                ax.get_legend().remove()
+                PL_0_csv = [flatten(i) for i in PL_0.compute_landscape()]
+            else:
+                PL_0 = []
+                PL_0_csv = []
+            
             ax.set_title("Persistence Landscapes [dim = 0]")
-            ax.get_legend().remove()
             fig.tight_layout()
             st.pyplot(fig)
 
             fig, ax = plt.subplots()
             fig.set_figheight(3)
-            PL_1 = landscapes.visuals.PersLandscapeExact([pd0, pd1],hom_deg=1)
-            landscapes.visuals.plot_landscape_simple(PL_1, ax=ax)
+
+            if len(pd1) != 0:
+                PL_1 = landscapes.visuals.PersLandscapeExact([pd0, pd1],hom_deg=1)
+                landscapes.visuals.plot_landscape_simple(PL_1, ax=ax)
+                ax.get_legend().remove()
+                PL_1_csv = [flatten(i) for i in PL_1.compute_landscape()]
+            else:
+                PL_1 = []
+                PL_1_csv = []
+            
             ax.set_title("Persistence Landscapes [dim = 1]")
-            ax.get_legend().remove()
             fig.tight_layout()
             st.pyplot(fig)
 
-            PL_0_csv = [flatten(i) for i in PL_0.compute_landscape()]
             CreateDownloadButton('Persistence Landscapes (PH0)', PL_0_csv)
-
-            PL_1_csv = [flatten(i) for i in PL_1.compute_landscape()]
             CreateDownloadButton('Persistence Landscapes (PH1)', PL_1_csv)
 
             st.markdown('#')
@@ -473,15 +528,25 @@ def main():
         if isPersEntropyChecked or visualizeAll:
             st.subheader("Entropy Summary Function")
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersEntropyRes')
-
-            PersEntropy_0 = vec.GetPersEntropyFeature(pd0, res=st.session_state.PersEntropyRes)
-            source = ColumnDataSource(data={'x': range(0, len(PersEntropy_0)), 'y': PersEntropy_0})
+            
+            if len(pd0) != 0:
+                PersEntropy_0 = vec.GetPersEntropyFeature(pd0, res=st.session_state.PersEntropyRes)
+                source = ColumnDataSource(data={'x': range(0, len(PersEntropy_0)), 'y': PersEntropy_0})
+            else:
+                PersEntropy_0 = []
+                source = ColumnDataSource(data={'x': [], 'y': []})
+            
             fig = figure(x_range=(0, len(PersEntropy_0)),title='Entropy Summary Function [dim = 0]', height=250, tools = tools)
             fig.line(x='x', y='y', color='blue', alpha=0.5, line_width=2, source=source)
             st.bokeh_chart(fig, use_container_width=True)
 
-            PersEntropy_1 = vec.GetPersEntropyFeature(pd1, res=st.session_state.PersEntropyRes)
-            source = ColumnDataSource(data={'x': range(0, len(PersEntropy_1)), 'y': PersEntropy_1})
+            if len(pd1) != 0:
+                PersEntropy_1 = vec.GetPersEntropyFeature(pd1, res=st.session_state.PersEntropyRes)
+                source = ColumnDataSource(data={'x': range(0, len(PersEntropy_1)), 'y': PersEntropy_1})
+            else:
+                PersEntropy_1 = []
+                source = ColumnDataSource(data={'x': [], 'y': []})
+            
             fig = figure(x_range=(0, len(PersEntropy_1)),title='Entropy Summary Function [dim = 1]', height=250, tools = tools)
             fig.line(x='x', y='y', color='red', alpha=0.5, line_width=2, source=source)
             st.bokeh_chart(fig, use_container_width=True)
@@ -501,14 +566,24 @@ def main():
             st.latex(r'''\textrm{ where $w = 1$, $p$ and $q$ are called birth and death of a bar, respectively}''')
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersSilRes')
 
-            PersSil_0 = vec.GetPersSilhouetteFeature(pd0, res=st.session_state.PersSilRes)
-            source = ColumnDataSource(data={'x': range(0, len(PersSil_0)), 'y': PersSil_0})
+            if len(pd0) != 0:
+                PersSil_0 = vec.GetPersSilhouetteFeature(pd0, res=st.session_state.PersSilRes)
+                source = ColumnDataSource(data={'x': range(0, len(PersSil_0)), 'y': PersSil_0})
+            else:
+                PersSil_0 = []
+                source = ColumnDataSource(data={'x': [], 'y': []})
+            
             fig = figure(x_range=(0, len(PersSil_0)),title='Persistence Silhouette [dim = 0]', height=250, tools = tools)
             fig.line(x='x', y='y', color='blue', alpha=0.5, line_width=2, source=source)
             st.bokeh_chart(fig, use_container_width=True)
 
-            PersSil_1 = vec.GetPersSilhouetteFeature(pd1, res=st.session_state.PersSilRes)
-            source = ColumnDataSource(data={'x': range(0, len(PersSil_1)), 'y': PersSil_1})
+            if len(pd1) != 0:
+                PersSil_1 = vec.GetPersSilhouetteFeature(pd1, res=st.session_state.PersSilRes)
+                source = ColumnDataSource(data={'x': range(0, len(PersSil_1)), 'y': PersSil_1})
+            else:
+                PersSil_1 = []
+                source = ColumnDataSource(data={'x': [], 'y': []})
+            
             fig = figure(x_range=(0, len(PersSil_1)),title='Persistence Silhouette [dim = 1]', height=250, tools = tools)
             fig.line(x='x', y='y', color='red', alpha=0.5, line_width=2, source=source)
             st.bokeh_chart(fig, use_container_width=True)
@@ -528,21 +603,39 @@ def main():
             if len(train_pd0s) > 0 and len(train_pd1s) > 0:
                 Atol_train_pd0s = train_pd0s
                 Atol_train_pd1s = train_pd1s
-                Atol_train_pd0s.insert(0, pd0)
-                Atol_train_pd1s.insert(0, pd1)
 
                 st.slider("Number of Clusters", 2, 10, value=4, step=1, key='AtolNumberClusters')
-                atol_0 = vec.GetAtolFeature(Atol_train_pd0s, k = st.session_state.AtolNumberClusters)
-                cat = [f'{i}' for i in range(len(atol_0[0]))]
+
+                if len(pd0) != 0:
+                    Atol_train_pd0s.insert(0, pd0)
+                    Atol_train_pd1s.insert(0, pd1)
+
+                    atol_0 = vec.GetAtolFeature(Atol_train_pd0s, k = st.session_state.AtolNumberClusters)
+                    cat = [f'{i}' for i in range(len(atol_0[0]))]
+                else:
+                    atol_0 = []
+                    cat = []
+                
                 fig = figure(x_range=cat, title='Atol [dim = 0]', height=250, tools = tools)
-                fig.vbar(x=cat, top=atol_0[0], width=0.9, color="darkblue", alpha=0.5)
+                
+                if len(atol_0) != 0:
+                    fig.vbar(x=cat, top=atol_0[0], width=0.9, color="darkblue", alpha=0.5)
+                
                 fig.xaxis.axis_label = "Clusters"
                 st.bokeh_chart(fig, use_container_width=True)
 
-                atol_1 = vec.GetAtolFeature(Atol_train_pd1s, k = st.session_state.AtolNumberClusters)
-                cat = [f'{i}' for i in range(len(atol_1[0]))]
+                if len(pd1) != 0:
+                    atol_1 = vec.GetAtolFeature(Atol_train_pd1s, k = st.session_state.AtolNumberClusters)
+                    cat = [f'{i}' for i in range(len(atol_1[0]))]
+                else:
+                    atol_1 = []
+                    cat = []
+                
                 fig = figure(x_range=cat, title='Atol [dim = 1]', height=250, tools = tools)
-                fig.vbar(x=cat, top=atol_1[0], width=0.9, color="darkred", alpha=0.5)
+
+                if len(atol_1) != 0:
+                    fig.vbar(x=cat, top=atol_1[0], width=0.9, color="darkred", alpha=0.5)
+
                 fig.xaxis.axis_label = "Clusters"
                 st.bokeh_chart(fig, use_container_width=True)
 
@@ -550,7 +643,8 @@ def main():
                 CreateDownloadButton('Atol (PH1)', atol_1[0])
             else:
                 st.error('''In order to compute Atol features, you need to select at least 
-                            one more data of the same type as the selected one. Use the second uploader from the sidebar on the left.''')
+                            one more data of the same type as the selected one. Use the second uploader from the sidebar on the left. 
+                            If you have already done this step, so selected data did not produce any barcode, select another file.''')
             
             st.markdown('#')
 
@@ -563,9 +657,14 @@ def main():
             st.subheader("Algebraic Coordinates")
             st.caption("Number of features = 5")
             
-            carlsCoords_0 = vec.GetCarlssonCoordinatesFeature(pd0)
             fig = figure(title='Algebraic Coordinates [dim = 0]', height=500, tools = tools)
-            fig.vbar(x=range(len(carlsCoords_0)), top=carlsCoords_0, width=0.9, color="darkblue", alpha=0.5)
+
+            if len(pd0) != 0:
+                carlsCoords_0 = vec.GetCarlssonCoordinatesFeature(pd0)
+                fig.vbar(x=range(len(carlsCoords_0)), top=carlsCoords_0, width=0.9, color="darkblue", alpha=0.5)
+            else:
+                carlsCoords_0 = []
+            
             fig.xaxis.major_label_overrides = {
                 0: r"$$f_1 = \sum_i p_i(q_i - p_i)$$",
                 1: r"$$f_2 =\sum_i(q_+-q_i)\,(q_i -p_i)$$",
@@ -577,9 +676,14 @@ def main():
             fig.xaxis.major_label_orientation = 0.8
             st.bokeh_chart(fig, use_container_width=True)
 
-            carlsCoords_1 = vec.GetCarlssonCoordinatesFeature(pd1)
             fig = figure(title='Algebraic Coordinates [dim = 1]', height=500, tools = tools)
-            fig.vbar(x=range(len(carlsCoords_1)), top=carlsCoords_1, width=0.9, color="darkred", alpha=0.5)
+
+            if len(pd1) != 0:
+                carlsCoords_1 = vec.GetCarlssonCoordinatesFeature(pd1)
+                fig.vbar(x=range(len(carlsCoords_1)), top=carlsCoords_1, width=0.9, color="darkred", alpha=0.5)
+            else:
+                carlsCoords_1 = []
+            
             fig.xaxis.major_label_overrides = {
                 0: r"$$f_1 = \sum_i p_i(q_i - p_i)$$",
                 1: r"$$f_2 =\sum_i(q_\text{max}-q_i)\,(q_i -p_i)$$",
@@ -603,17 +707,29 @@ def main():
         if isPersLifeSpanChecked or visualizeAll:
             st.subheader("Lifespan Curve")
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersLifeSpanRes')
-
-            persLifeSpan_0 = vec.GetPersLifespanFeature(pd0, res=st.session_state.PersLifeSpanRes)
-            xrange = (0, len(persLifeSpan_0))
-            source = ColumnDataSource(data={'x': range(0, len(persLifeSpan_0)), 'y': persLifeSpan_0})
+            
+            if len(pd0) != 0:
+                persLifeSpan_0 = vec.GetPersLifespanFeature(pd0, res=st.session_state.PersLifeSpanRes)
+                xrange = (0, len(persLifeSpan_0))
+                source = ColumnDataSource(data={'x': range(0, len(persLifeSpan_0)), 'y': persLifeSpan_0})
+            else:
+                persLifeSpan_0 = []
+                xrange = []
+                source = ColumnDataSource(data={'x': [], 'y': []})
+            
             fig = figure(x_range=xrange, title='Lifespan Curve [dim = 0]', height=250, tools = tools)
             fig.line(x='x', y='y', color='blue', alpha=0.5, line_width=2, source=source)
             st.bokeh_chart(fig, use_container_width=True)
 
-            persLifeSpan_1 = vec.GetPersLifespanFeature(pd1, res=st.session_state.PersLifeSpanRes)
-            xrange = (0, len(persLifeSpan_1))
-            source = ColumnDataSource(data={'x': range(0, len(persLifeSpan_1)), 'y': persLifeSpan_1})
+            if len(pd1) != 0:
+                persLifeSpan_1 = vec.GetPersLifespanFeature(pd1, res=st.session_state.PersLifeSpanRes)
+                xrange = (0, len(persLifeSpan_1))
+                source = ColumnDataSource(data={'x': range(0, len(persLifeSpan_1)), 'y': persLifeSpan_1})
+            else:
+                persLifeSpan_1 = []
+                xrange = []
+                source = ColumnDataSource(data={'x': [], 'y': []})
+            
             fig = figure(x_range=xrange, title='Lifespan Curve [dim = 1]', height=250, tools = tools)
             fig.line(x='x', y='y', color='red', alpha=0.5, line_width=2, source=source)
             st.bokeh_chart(fig, use_container_width=True)
@@ -633,16 +749,26 @@ def main():
             tools = ["pan","box_zoom", "wheel_zoom", "box_select", "hover", "reset"]
             st.selectbox("Polynomial Type",["R", "S", "T"], index=0, key='CPType')
 
-            CP_pd0 = vec.GetComplexPolynomialFeature(pd0, pol_type=st.session_state.CPType)
-            source = ColumnDataSource(data={'x': CP_pd0[:,0], 'y': CP_pd0[:,1]})
+            if len(pd0) != 0:
+                CP_pd0 = vec.GetComplexPolynomialFeature(pd0, pol_type=st.session_state.CPType)
+                source = ColumnDataSource(data={'x': CP_pd0[:,0], 'y': CP_pd0[:,1]})
+            else:
+                CP_pd0 = []
+                source = ColumnDataSource(data={'x': [], 'y': []})
+            
             fig = figure(title='Complex Polynomial [dim = 0]', height=250, tools = tools)
             fig.circle(x='x', y='y', color="darkblue", alpha=0.4, size=5, hover_color="red", source=source)
             fig.xaxis.axis_label = "Real"
             fig.yaxis.axis_label = "Imaginary"
             st.bokeh_chart(fig, use_container_width=True)
 
-            CP_pd1 = vec.GetComplexPolynomialFeature(pd1, pol_type=st.session_state.CPType)
-            source = ColumnDataSource(data={'x': CP_pd1[:,0], 'y': CP_pd1[:,1]})
+            if len(pd1) != 0:
+                CP_pd1 = vec.GetComplexPolynomialFeature(pd1, pol_type=st.session_state.CPType)
+                source = ColumnDataSource(data={'x': CP_pd1[:,0], 'y': CP_pd1[:,1]})
+            else:
+                CP_pd1 = []
+                source = ColumnDataSource(data={'x': [], 'y': []})
+            
             fig = figure(title='Complex Polynomial [dim = 1]', height=250, tools = tools)
             fig.circle(x='x', y='y', color="darkred", alpha=0.4, size=5, hover_color="red", source=source)
             fig.xaxis.axis_label = "Real"
@@ -662,18 +788,34 @@ def main():
             st.subheader("Topological Vector")
             st.slider("Threshold", 2, 10, value=8, step=1, key='TopologicalVectorThreshold')
 
-            topologicalVector_0 = vec.GetTopologicalVectorFeature(pd0, thres=st.session_state.TopologicalVectorThreshold)
-            cat = [f'{i}' for i in range(len(topologicalVector_0))]
+            if len(pd0) != 0:
+                topologicalVector_0 = vec.GetTopologicalVectorFeature(pd0, thres=st.session_state.TopologicalVectorThreshold)
+                cat = [f'{i}' for i in range(len(topologicalVector_0))]
+            else:
+                topologicalVector_0 = []
+                cat = []
+            
             fig = figure(x_range=cat, title='Topological Vector [dim = 0]', height=250, tools = tools)
-            fig.vbar(x=cat, top=topologicalVector_0, width=0.8, color="darkblue", alpha=0.5)
+
+            if len(topologicalVector_0) != 0:
+                fig.vbar(x=cat, top=topologicalVector_0, width=0.8, color="darkblue", alpha=0.5)
+            
             fig.xaxis.axis_label = "Element"
             fig.yaxis.axis_label = "Threshold"
             st.bokeh_chart(fig, use_container_width=True)
 
-            topologicalVector_1 = vec.GetTopologicalVectorFeature(pd1, thres=st.session_state.TopologicalVectorThreshold)
-            cat = [f'{i}' for i in range(len(topologicalVector_0))]
+            if len(pd1) != 0:
+                topologicalVector_1 = vec.GetTopologicalVectorFeature(pd1, thres=st.session_state.TopologicalVectorThreshold)
+                cat = [f'{i}' for i in range(len(topologicalVector_1))]
+            else:
+                topologicalVector_1 = []
+                cat = []
+            
             fig = figure(x_range=cat, title='Topological Vector [dim = 1]', height=250, tools = tools)
-            fig.vbar(x=cat, top=topologicalVector_1, width=0.8, color="darkred", alpha=0.5)
+            
+            if len(topologicalVector_1) != 0:
+                fig.vbar(x=cat, top=topologicalVector_1, width=0.8, color="darkred", alpha=0.5)
+            
             fig.xaxis.axis_label = "Element"
             fig.yaxis.axis_label = "Threshold"
             st.bokeh_chart(fig, use_container_width=True)
@@ -690,18 +832,36 @@ def main():
         if isPersTropCoordsChecked or visualizeAll:
             st.subheader("Tropical Coordinates")
 
-            persTropCoords_0 = vec.GetPersTropicalCoordinatesFeature(pd0)
+            if len(pd0) != 0:
+                persTropCoords_0 = vec.GetPersTropicalCoordinatesFeature(pd0)
+                xrange = range(len(persTropCoords_0))
+            else:
+                persTropCoords_0 = []
+                xrange = []
+            
             fig = figure(title='Tropical Coordinates [dim = 0]', height=250, tools = tools)
-            fig.vbar(x=range(len(persTropCoords_0)), top=persTropCoords_0, width=0.9, color="darkblue", alpha=0.5)
+
+            if len(persTropCoords_0) != 0:
+                fig.vbar(x=xrange, top=persTropCoords_0, width=0.9, color="darkblue", alpha=0.5)
+                fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(persTropCoords_0))}
+            
             fig.xaxis.axis_label = "Coordinate"
-            fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(persTropCoords_0))}
             st.bokeh_chart(fig, use_container_width=True)
 
-            persTropCoords_1 = vec.GetPersTropicalCoordinatesFeature(pd1)
+            if len(pd1) != 0:
+                persTropCoords_1 = vec.GetPersTropicalCoordinatesFeature(pd1)
+                xrange = range(len(persTropCoords_1))
+            else:
+                persTropCoords_1 = []
+                xrange = []
+            
             fig = figure(title='Tropical Coordinates [dim = 1]', height=250, tools = tools)
-            fig.vbar(x=range(len(persTropCoords_1)), top=persTropCoords_1, width=0.9, color="darkred", alpha=0.5)
+            
+            if len(persTropCoords_1) != 0:
+                fig.vbar(x=xrange, top=persTropCoords_1, width=0.9, color="darkred", alpha=0.5)
+                fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(persTropCoords_1))}
+
             fig.xaxis.axis_label = "Coordinate"
-            fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(persTropCoords_1))}
             st.bokeh_chart(fig, use_container_width=True)
 
             CreateDownloadButton('Tropical Coordinates (PH0)', persTropCoords_0)
@@ -716,18 +876,34 @@ def main():
         if isTemplateFunctionChecked or visualizeAll:
             st.subheader("Template Function")
             
-            templateFunc_0 = vec.GetTemplateFunctionFeature(pd0)[0]
+            if len(pd0) != 0:
+                templateFunc_0 = vec.GetTemplateFunctionFeature(pd0)[0]
+                xrange = range(len(templateFunc_0))
+            else:
+                templateFunc_0 = []
+                xrange = []
+            
             fig = figure(title='Template Function [dim = 0]', height=250, tools = tools)
-            fig.vbar(x=range(len(templateFunc_0)), top=templateFunc_0, width=0.9, color="darkblue", alpha=0.5)
-            # fig.xaxis.axis_label = "Coordinate"
-            fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(templateFunc_0))}
+
+            if len(templateFunc_0) != 0:
+                fig.vbar(x=xrange, top=templateFunc_0, width=0.9, color="darkblue", alpha=0.5)
+                fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(templateFunc_0))}
+            
             st.bokeh_chart(fig, use_container_width=True)
 
-            templateFunc_1 = vec.GetTemplateFunctionFeature(pd1)[0]
+            if len(pd1) != 0:
+                templateFunc_1 = vec.GetTemplateFunctionFeature(pd1)[0]
+                xrange = range(len(templateFunc_1))
+            else:
+                templateFunc_1 = []
+                xrange = []
+            
             fig = figure(title='Template Function [dim = 1]', height=250, tools = tools)
-            fig.vbar(x=range(len(templateFunc_1)), top=templateFunc_1, width=0.9, color="darkred", alpha=0.5)
-            # fig.xaxis.axis_label = "Coordinate"
-            fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(templateFunc_1))}
+
+            if len(templateFunc_1) != 0:
+                fig.vbar(x=xrange, top=templateFunc_1, width=0.9, color="darkred", alpha=0.5)
+                fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(templateFunc_1))}
+            
             st.bokeh_chart(fig, use_container_width=True)
 
             CreateDownloadButton('Template Function (PH0)', templateFunc_0)
@@ -745,31 +921,73 @@ def main():
             st.caption("Clustering method: GMM")
 
             if len(train_pd0s) > 0 and len(train_pd1s) > 0:
-                labels = [i for i in range(len(train_pd0s))]
                 st.slider("Number of Clusters", 1, 15, value=10, step=1, key='TempSysNComp')
-                TempSys_0 = vec.GetAdaptativeSystemFeature(train_pd0s, [pd0], labels, d=st.session_state.TempSysNComp)
-                cat = [f'{i}' for i in range(len(TempSys_0[0]))]
+
+                if len(pd0) != 0:
+                    labels = [i for i in range(len(train_pd0s))]
+                    TempSys_0 = vec.GetAdaptativeSystemFeature(train_pd0s, [pd0], labels, d=st.session_state.TempSysNComp)
+                    cat = [f'{i}' for i in range(len(TempSys_0[0]))]
+                else:
+                    labels = []
+                    TempSys_0 = []
+                    cat = []
+                
                 fig = figure(x_range=cat, title='Adaptive Template System [dim = 0]', height=250, tools = tools)
-                fig.vbar(x=cat, top=TempSys_0[0], width=0.9, color="darkblue", alpha=0.5)
+
+                if len(TempSys_0) != 0:
+                    fig.vbar(x=cat, top=TempSys_0[0], width=0.9, color="darkblue", alpha=0.5)
+                
                 fig.xaxis.axis_label = "Clusters"
                 st.bokeh_chart(fig, use_container_width=True)
 
-                TempSys_1 = vec.GetAdaptativeSystemFeature(train_pd1s, [pd1], labels, d=st.session_state.TempSysNComp)
-                cat = [f'{i}' for i in range(len(TempSys_1[0]))]
+                if len(pd1) != 0:
+                    labels = [i for i in range(len(train_pd1s))]
+                    TempSys_1 = vec.GetAdaptativeSystemFeature(train_pd1s, [pd1], labels, d=st.session_state.TempSysNComp)
+                    cat = [f'{i}' for i in range(len(TempSys_1[0]))]
+                else:
+                    labels = []
+                    TempSys_1 = []
+                    cat = []
+                
                 fig = figure(x_range=cat, title='Adaptive Template System [dim = 1]', height=250, tools = tools)
-                fig.vbar(x=cat, top=TempSys_1[0], width=0.9, color="darkred", alpha=0.5)
+
+                if len(TempSys_1) != 0:
+                    fig.vbar(x=cat, top=TempSys_1[0], width=0.9, color="darkred", alpha=0.5)
+                
                 fig.xaxis.axis_label = "Clusters"
                 st.bokeh_chart(fig, use_container_width=True)
+                
+                TempSys_0_csv = TempSys_0[0] if len(TempSys_0) != 0 else []
+                TempSys_1_csv = TempSys_1[0] if len(TempSys_1) != 0 else []
 
-                CreateDownloadButton('Adaptive Template System (PH0)', TempSys_0[0])
-                CreateDownloadButton('Adaptive Template System (PH1)', TempSys_1[0])
+                CreateDownloadButton('Adaptive Template System (PH0)', TempSys_0_csv)
+                CreateDownloadButton('Adaptive Template System (PH1)', TempSys_1_csv)
             else:
                 st.error('''In order to compute Adaptive Template System features, you need to select at least 
-                            one more data of the same type as the selected one. Use the second uploader from the sidebar on the left.''')
+                            one more data of the same type as the selected one. Use the second uploader from the sidebar on the left. 
+                            If you have already done this step, so selected data did not produce any barcode, select another file.''')
 
     # Display error message if no file is selected 
     else:
         st.error("Please upload a file to start.")
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        logging.error("Exception occurred:\n", exc_info=True)
+
+        # # creating/opening a file
+        # f = open("log.txt", "a")
+    
+        # # writing in the file
+        # f.write(f'{datetime.datetime.now()}\nException occurred:\n')
+        # f.write(str(e) + '\n')
+        # f.write(traceback.format_exc())
+        # f.write('\n\n')
+        
+        # # closing the file
+        # f.close()
+
+        st.error(f'''An unexpected error occured. Please refresh you browser to restart. This could be due to wrong file format
+                    or overflow due to large file size. Please use a smaller file in correct format and try again.\n\n{e}''')
