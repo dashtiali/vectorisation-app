@@ -213,15 +213,22 @@ def get_all_features_boxes(list_dgms, centers, delta):
 
 	return features
 
+# def tent_features(X_train, X_test, d=5, padding=.05):
+#     centers, delta = box_centers(X_train, d, padding) 
 
-def tent_features(X_train, X_test, d=5, padding=.05):
-    centers, delta = box_centers(X_train, d, padding) 
+#     X_train_features = get_all_features_boxes(X_train, centers, delta)
 
-    X_train_features = get_all_features_boxes(X_train, centers, delta)
+#     X_test_features = get_all_features_boxes(X_test, centers, delta)
 
-    X_test_features = get_all_features_boxes(X_test, centers, delta)
+#     return X_train_features, X_test_features
 
-    return X_train_features, X_test_features
+# Modified according to Maria's suggestion
+def tent_features(barcodes, d=5, padding=.05):
+    centers, delta = box_centers(barcodes, d, padding)
+
+    barcodes_features = get_all_features_boxes(barcodes, centers, delta)
+
+    return barcodes_features
 
 def adaptive_features(X_train, X_test, model, y_train, d=25):
     if model == "gmm":
