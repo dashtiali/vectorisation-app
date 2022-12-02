@@ -1,6 +1,6 @@
 '''
     Name: Persistent Homology Vectorization Methods Web App
-    This app is a part of the follwoing paper:
+    This app is a part of the following paper:
 
     "A Survey of Vectorization Methods in Topological Data Analysis, 
     Dashti A Ali, Aras Asaad, Maria Jose Jimenez, Vidit Nanda, Eduardo Paluzo-Hidalgo,
@@ -19,13 +19,14 @@
 '''
 
 # ************************************************
-#   Neccessary packages to run the application
+#   Necessary packages to run the application
 # ************************************************
 import streamlit as st
 from PIL import Image
 import numpy as np
 import gudhi as gd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import vectorisation as vec
 import plotly.express as px
 from bokeh.plotting import figure
@@ -45,8 +46,8 @@ import datetime
 
 # ************************************************
 #           @st.cache, what does it do?
-# Accroding to Streamlit documentation:
-# When you mark a function with Streamlit’s cache annotation, it tells Streamlit 
+# According to Streamlit documentation:
+# When you mark a function with Streamlit's cache annotation, it tells Streamlit 
 # that whenever the function is called it should check three things:
 #     1.The name of the function
 #     2.The actual code that makes up the body of the function
@@ -113,8 +114,8 @@ def GetPds(data, isPointCloud):
 	:param data: image or point cloud data
 	:type data: numpy 2D array
     :param isPointCloud: indicates if the input data is a point cloud, otherwise it is an image
-	:type isPointCloud: bolean
-	:return pd0, pd1:  numpy 2D arrays -- Persistence barcodes in dimention 0, 1
+	:type isPointCloud: Boolean
+	:return pd0, pd1:  numpy 2D arrays -- Persistence barcodes in dimension 0, 1
 	'''
     pd0 = pd1 = None
 
@@ -193,7 +194,7 @@ def flatten(lst):
 
 def main():
     '''
-	The main function to create the streamlit app
+	The main function to create the Streamlit app
 	'''
 
     # ************************************************
@@ -262,12 +263,12 @@ def main():
     st.sidebar.markdown('#')
     st.sidebar.caption('''### About:''')
     st.sidebar.caption('''
-        This WebApp can be used to compute, visualize  and featurize Persistent Homology Barcodes. It is part of the follwoing research paper:\\
-        [Paper Refrence](https://google.com)\\
+        This WebApp can be used to compute, visualize  and featurize Persistent Homology Barcodes. It is part of the following research paper:\\
+        [Paper Reference](https://google.com)\\
         This WebApp (currently) can compute PH barcodes in dimension 0 and 1. The user can select corresponding check boxes to plot Persistence Barcodes 
         along with an option to plot their corresponding persistence diagrams in one plot. Furthermore, 12 barcode featurization methods can be selected to 
         compute and visualize as tables (e.g. Persistence statistics) or plots. Last but not least, an export button is associated 
-        with each PH barcodes, diagrams and 12 featurised PH barcodes so that users can download associated data to their 
+        with each PH barcodes, diagrams and 12 featurized PH barcodes so that users can download associated data to their 
         local machines for further exploration.''')
 
     # When file path is selected or changed the following will be populated
@@ -314,7 +315,7 @@ def main():
         # and compute their persistence barcodes
         # ************************************************
 
-        #we start by initialising variables
+        #we start by initializing variables
         train_pd0s = list()
         train_pd1s = list()
         train_pd0s.clear()
@@ -327,7 +328,7 @@ def main():
             pd0, pd1 = GetPds(input_data, isPointCloud)
 
         if (choice == "Custom"):
-            # This is where the user can select more than one data sample for ATOL & ATS vectorisation methods.
+            # This is where the user can select more than one data sample for ATOL & ATS vectorization methods.
             # Then we compute persistence diagrams for selected data samples. 
             if train_file_paths is not None:
                 for file in train_file_paths:
@@ -365,20 +366,20 @@ def main():
         if isPersBarChecked or visualizeAll:
             st.subheader("Persistence Barcodes")
 
-            # Visualising PersBarcode in dim-0 (Together with its error handling)
+            # Visualizing PersBarcode in dim-0 (Together with its error handling)
             if len(pd0) != 0:
                 source = ColumnDataSource(data={'birth': pd0[:,0], 'death': pd0[:,1], 'y': range(len(pd0[:,0]))})
             else:
                 # This is an error handling step so that when the PersBarcode data is empty, 
-                # then initialize an empty array and return an empty plot to avoid throughing an error
-                # A Similar approach has been repeated for the rest of the vectorisation method visualisation.
+                # then initialize an empty array and return an empty plot to avoid getting an error
+                # A Similar approach has been repeated for the rest of the vectorization method visualization.
                 source = ColumnDataSource(data={'birth': [], 'death': [], 'y': []})
             
             fig = figure(title='Persistence Barcode [dim = 0]', height=250, tools = tools)
             fig.hbar(y='y', left ='birth', right='death', height=0.1, alpha=0.7, source=source)
             st.bokeh_chart(fig, use_container_width=True)
 
-            # Visualising PersBarcode in dim-1
+            # Visualizing PersBarcode in dim-1
             if len(pd1) != 0:
                 source = ColumnDataSource(data={'birth': pd1[:,0], 'death': pd1[:,1], 'y': range(len(pd1[:,0]))})
             else:
@@ -398,24 +399,35 @@ def main():
 
         if isPersDiagChecked or visualizeAll:
             st.subheader("Persistence Diagram")
+            # dgms = []
+
+            # if len(pd0) != 0:
+            #     dgms.append(pd0)
+            
+            # if len(pd1) != 0:
+            #     dgms.append(pd1)
+
+            col1, col2 = st.columns(2)
+
             fig, ax = plt.subplots()
-            dgms = []
 
             if len(pd0) != 0:
-                dgms.append(pd0)
+                persim.plot_diagrams([pd0],labels= ["H0"], ax=ax)
+            
+            ax.set_title("Persistence Diagram H0")
+            col1.pyplot(fig)
+
+            fig, ax = plt.subplots()
             
             if len(pd1) != 0:
-                dgms.append(pd1)
-
-            if len(dgms) != 0:
-                persim.plot_diagrams(dgms,labels= ["H0", "H1"], ax=ax)
+                persim.plot_diagrams([pd1],labels= ["H1"], ax=ax)
             
-            ax.set_title("Persistence Diagram")
-            st.pyplot(fig)
-        # Create a donload button for PersDiagram plot, PLease.
+            ax.set_title("Persistence Diagram H1")
+            col2.pyplot(fig)
+        # Create a download button for PersDiagram plot, PLease.
 
         # ************************************************
-        # Computing and Visualising Persistence Statistics
+        # Computing and Visualizing Persistence Statistics
         # ************************************************
         isPersStatsChecked = False if visualizeAll else st.checkbox('Persistence Statistics')
 
@@ -439,7 +451,7 @@ def main():
             st.markdown('#')
         
         # ************************************************
-        # Computing and Visualising Entropy Summary Function
+        # Computing and Visualizing Entropy Summary Function
         # ************************************************
         isPersEntropyChecked = False if visualizeAll else st.checkbox('Entropy Summary Function')
 
@@ -476,7 +488,7 @@ def main():
             st.markdown('#')
 
         # ************************************************
-        #   Computing and Visualising Algebraic Functions
+        #   Computing and Visualizing Algebraic Functions
         # ************************************************
         isCarlsCoordsChecked = False if visualizeAll else st.checkbox('Algebraic Functions')
 
@@ -527,7 +539,7 @@ def main():
             st.markdown('#')
 
         # ************************************************
-        #   Computing and Visualising Tropical Coordinates
+        #   Computing and Visualizing Tropical Coordinates
         # ************************************************
         isPersTropCoordsChecked = False if visualizeAll else st.checkbox('Tropical Coordinates')
 
@@ -571,7 +583,7 @@ def main():
             st.markdown('#')
 
         # ************************************************
-        #   Computing and Visualising Complex Polynomial
+        #   Computing and Visualizing Complex Polynomial
         # ************************************************
         isComplexPolynomialChecked = False if visualizeAll else st.checkbox('Complex Polynomial')
 
@@ -662,7 +674,7 @@ def main():
             st.markdown('#')
 
         # ************************************************
-        #       Computing and Visualising Betti Curve
+        #       Computing and Visualizing Betti Curve
         # ************************************************
         isBettiCurveChecked = False if visualizeAll else st.checkbox('Betti Curve')
 
@@ -700,7 +712,7 @@ def main():
             st.markdown('#')
 
         # ************************************************
-        # Computing and Visualising Persistence Landscapes
+        # Computing and Visualizing Persistence Landscapes
         # ************************************************
         isPersLandChecked = False if visualizeAll else st.checkbox('Persistence Landscapes')
 
@@ -746,7 +758,7 @@ def main():
             st.markdown('#')
 
         # ************************************************
-        # Computing and Visualising Persistence Silhouette
+        # Computing and Visualizing Persistence Silhouette
         # ************************************************
         isPersSilChecked = False if visualizeAll else st.checkbox('Persistence Silhouette')
 
@@ -783,7 +795,7 @@ def main():
             st.markdown('#')
 
         # ************************************************
-        #   Computing and Visualising Lifespan Curve
+        #   Computing and Visualizing Lifespan Curve
         # ************************************************
         isPersLifeSpanChecked = False if visualizeAll else st.checkbox('Lifespan Curve')
 
@@ -822,7 +834,7 @@ def main():
             st.markdown('#')
 
         # ************************************************
-        #   Computing and Visualising Persistence Image
+        #   Computing and Visualizing Persistence Image
         # ************************************************
         isPersImgChecked = False if visualizeAll else st.checkbox('Persistence Image')
 
@@ -858,7 +870,7 @@ def main():
             st.markdown('#')
 
         # ************************************************
-        #   Computing and Visualising Template Function
+        #   Computing and Visualizing Template Function
         # ************************************************
         isTemplateFunctionChecked = False if visualizeAll else st.checkbox('Template Function')
 
@@ -901,7 +913,7 @@ def main():
             st.markdown('#')
 
         # ************************************************
-        # Computing and Visualising Adaptive Template System
+        # Computing and Visualizing Adaptive Template System
         # ************************************************
         isTemplateSystemChecked = False if visualizeAll else st.checkbox('Adaptive Template System')
 
@@ -953,7 +965,7 @@ def main():
                             If you have already done this step, so selected data did not produce any barcode, select another file.''')
 
         # ************************************************
-        #           Computing and Visualising ATOL
+        #           Computing and Visualizing ATOL
         # ************************************************
         isAtolChecked = False if visualizeAll else st.checkbox('ATOL')
 
@@ -1009,7 +1021,7 @@ def main():
             st.markdown('#')
 
         # ************************************************
-        #   Computing and Visualising Topological Vector
+        #   Computing and Visualizing Topological Vector
         # ************************************************
         isTopologicalVectorChecked = False if visualizeAll else st.checkbox('Topological Vector')
 
@@ -1075,5 +1087,5 @@ if __name__ == '__main__':
         # # closing the file
         # f.close()
 
-        st.error(f'''An unexpected error occured. Please refresh you browser to restart. This could be due to wrong file format
+        st.error(f'''An unexpected error occurred. Please refresh you browser to restart. This could be due to wrong file format
                     or overflow due to large file size. Please use a smaller file in correct format and try again.\n\n{e}''')
