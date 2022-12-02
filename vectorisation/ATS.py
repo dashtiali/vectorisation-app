@@ -54,8 +54,9 @@ def limits_box(list_dgms):
 	mins = np.inf*np.ones(2)
 	maxs = -np.inf*np.ones(2)
 
+
 	for dgm in list_dgms_temp:
-		# dgm[:,1] = dgm[:,1]-dgm[:,0] # Turns the birth-death into birth-lifespan
+		dgm[:,1] = dgm[:,1]-dgm[:,0] # Turns the birth-death into birth-lifespan
 		mins = np.minimum(np.amin(dgm, axis=0), mins)
 		maxs = np.maximum(np.amax(dgm, axis=0), maxs)
 
@@ -213,22 +214,14 @@ def get_all_features_boxes(list_dgms, centers, delta):
 	return features
 
 
-# def tent_features(X_train, X_test, d=5, padding=.05):
-#     centers, delta = box_centers(X_train, d, padding) 
+def tent_features(X_train, X_test, d=5, padding=.05):
+    centers, delta = box_centers(X_train, d, padding) 
 
-#     X_train_features = get_all_features_boxes(X_train, centers, delta)
+    X_train_features = get_all_features_boxes(X_train, centers, delta)
 
-#     X_test_features = get_all_features_boxes(X_test, centers, delta)
+    X_test_features = get_all_features_boxes(X_test, centers, delta)
 
-#     return X_train_features, X_test_features
-
-# Modified according to Maria's suggestion
-def tent_features(barcodes, d=5, padding=.05):
-    centers, delta = box_centers(barcodes, d, padding)
-
-    barcodes_features = get_all_features_boxes(barcodes, centers, delta)
-
-    return barcodes_features
+    return X_train_features, X_test_features
 
 def adaptive_features(X_train, X_test, model, y_train, d=25):
     if model == "gmm":
