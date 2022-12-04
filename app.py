@@ -35,10 +35,8 @@ import pandas as pd
 import io
 import os
 from scipy.spatial import distance
-from scipy.ndimage import distance_transform_bf
 from ripser import ripser
 import persim
-from skimage import feature, filters, morphology
 import logging
 # import traceback
 # import datetime
@@ -111,7 +109,7 @@ def infty_proj(x):
 
 
 @st.cache(ttl=600, max_entries=8)
-def GetPds(data, isPointCloud, filtration_type='CubicalComplex'):
+def GetPds(data, isPointCloud):
     '''
 	Compute persistence barcodes (H0, H1) from image or point cloud
 	:param data: image or point cloud data
@@ -133,50 +131,20 @@ def GetPds(data, isPointCloud, filtration_type='CubicalComplex'):
         pd1 = pd1[~np.isinf(pd1).any(axis=1),:]
     else:
         data = np.array(data)
-        
-        if filtration_type == 'EdgeGrowing':
-            to2828 = lambda d : d.reshape([28,28])
-            padding = lambda d : np.pad(d, ((2,2), (2,2)), 'constant', constant_values=0)
-            sq=morphology.rectangle(3, 3, dtype='uint8')
-            median = lambda d : filters.median(d, sq)
-            binarization = lambda d : 255*(d>5)
-            edger = lambda d : feature.canny(image=d, low_threshold=20, high_threshold=170)
-            inverter = lambda d : np.max(np.float32(d))-d
-            edge_pipeline = lambda d : inverter(edger(binarization(median(padding(to2828(d))))))
+        data_gudhi = np.resize(data, [64, 64])
+        data_gudhi = data_gudhi.reshape(64*64,1)
+        cub_filtration = gd.CubicalComplex(dimensions = [64,64], top_dimensional_cells=data_gudhi)
+        cub_filtration.persistence()
 
-            edge_image = edge_pipeline(data)
+        pd0 = cub_filtration.persistence_intervals_in_dimension(0)
+        pd1 = cub_filtration.persistence_intervals_in_dimension(1)
 
-            # Filtration function:
-            filt_taxi = lambda ima : distance_transform_bf(ima, metric='taxicab')
-
-            # Complexes
-            taxi_complex = np.array(filt_taxi(edge_image))
-            taxi_complex_opp = np.array(inverter(taxi_complex))
-
-            # Persistence diagram computation
-            n = taxi_complex.shape[0]
-            n_square = n**2
-            dgms = vec.GetCubicalComplexPDs(img=taxi_complex_opp.reshape(n_square,), img_dim=[n,n])
-
-            # Removing the infinity bar
-            pd0 = dgms[0][:-1]
-            pd1 = dgms[1]
-
-        else:
-            data_gudhi = np.resize(data, [64, 64])
-            data_gudhi = data_gudhi.reshape(64*64,1)
-            cub_filtration = gd.CubicalComplex(dimensions = [64,64], top_dimensional_cells=data_gudhi)
-            cub_filtration.persistence()
-
-            pd0 = cub_filtration.persistence_intervals_in_dimension(0)
-            pd1 = cub_filtration.persistence_intervals_in_dimension(1)
-
-            for j in range(pd0.shape[0]):
-                if pd0[j,1]==np.inf:
-                    pd0[j,1]=256
-            for j in range(pd1.shape[0]):
-                if pd1[j,1]==np.inf:
-                    pd1[j,1]=256
+        for j in range(pd0.shape[0]):
+            if pd0[j,1]==np.inf:
+                pd0[j,1]=256
+        for j in range(pd1.shape[0]):
+            if pd1[j,1]==np.inf:
+                pd1[j,1]=256
     
     return pd0, pd1
 
@@ -253,7 +221,6 @@ def main():
     sidebar_menu = ["Cifar10","Fashion MNIST","Outex68", "Shrec14", "Custom"]
     choice = st.sidebar.selectbox("Select a Dataset", sidebar_menu)
     filtrationType = "Cubical Complex"
-    filtration_type='CubicalComplex'
 
     # Set main and train files path
     mainPath = os.getcwd()
@@ -268,20 +235,27 @@ def main():
     # for selected option from the sidebar main menu
     if choice == "Cifar10":
         file_path = mainPath + r"/data/cifar10.png"
+        pd0_file_path = mainPath + r"/data/cifar10_ph0.csv"
+        pd1_file_path = mainPath + r"/data/cifar10_ph1.csv"
         train_pd0_file_paths = [train_folder + "cifar30_ph0.csv", train_folder + "cifar51_ph0.csv"]
         train_pd1_file_paths = [train_folder + "cifar30_ph1.csv", train_folder + "cifar51_ph1.csv"]
     elif choice == "Fashion MNIST":
         file_path = mainPath + r"/data/FashionMNIST.jpg"
+        pd0_file_path = mainPath + r"/data/FashionMNIST_ph0.csv"
+        pd1_file_path = mainPath + r"/data/FashionMNIST_ph1.csv"
         train_pd0_file_paths = [train_folder + "FashionMNIST21_ph0.csv", train_folder + "FashionMNIST502_ph0.csv"]
         train_pd1_file_paths = [train_folder + "FashionMNIST21_ph1.csv", train_folder + "FashionMNIST502_ph1.csv"]
         filtrationType = "Edge growing"
-        filtration_type = 'EdgeGrowing'
     elif choice == "Outex68":
         file_path = mainPath + r"/data/Outex1.bmp"
+        pd0_file_path = mainPath + r"/data/outex1_ph0.csv"
+        pd1_file_path = mainPath + r"/data/outex1_ph1.csv"
         train_pd0_file_paths = [train_folder + "Outex2_ph0.csv", train_folder + "Outex3_ph0.csv"]
         train_pd1_file_paths = [train_folder + "Outex2_ph1.csv", train_folder + "Outex3_ph1.csv"]
     elif choice == "Shrec14":
         file_path = mainPath + r"/data/shrec14_data_0.csv"
+        pd0_file_path = mainPath + r"/data/shrec14_data_0_ph0.csv"
+        pd1_file_path = mainPath + r"/data/shrec14_data_0_ph1.csv"
         train_pd0_file_paths = [train_folder + "shrec14_data_1_ph0.csv", train_folder + "shrec14_data_2_ph0.csv"]
         train_pd1_file_paths = [train_folder + "shrec14_data_1_ph1.csv", train_folder + "shrec14_data_2_ph1.csv"]
         filtrationType = "Heat Kernel Signature"
@@ -358,12 +332,12 @@ def main():
         train_pd1s = list()
         train_pd0s.clear()
         train_pd1s.clear()
-        #when use selected Shrec14, load pre-computed PersBarcodes in dim-0 & dim-1
-        if(choice == "Shrec14"):
-            pd0 = load_csv(mainPath + r"/data/shrec14_data_0_ph0.csv")
-            pd1 = load_csv(mainPath + r"/data/shrec14_data_0_ph1.csv")
+        #when user selected sample data sets, load pre-computed PersBarcodes in dim-0 & dim-1
+        if(choice == "Custom"):
+            pd0, pd1 = GetPds(input_data, isPointCloud)
         else:
-            pd0, pd1 = GetPds(input_data, isPointCloud, filtration_type)
+            pd0 = load_csv(pd0_file_path)
+            pd1 = load_csv(pd1_file_path)
 
         if (choice == "Custom"):
             # This is where the user can select more than one data sample for ATOL & ATS vectorization methods.
