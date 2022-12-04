@@ -26,7 +26,6 @@ from PIL import Image
 import numpy as np
 import gudhi as gd
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import vectorisation as vec
 import plotly.express as px
 from bokeh.plotting import figure
@@ -36,12 +35,13 @@ import pandas as pd
 import io
 import os
 from scipy.spatial import distance
+from scipy.ndimage import distance_transform_bf
 from ripser import ripser
 import persim
-import landscapes as landscapes
+from skimage import feature, filters, morphology
 import logging
-import traceback
-import datetime
+# import traceback
+# import datetime
 
 
 # ************************************************
@@ -60,7 +60,7 @@ import datetime
 # ************************************************
 
 @st.cache(ttl=600, max_entries=8)
-def load_image(file_path):
+def load_image(file_path, resize=False):
     '''
     Load image file and convert to grayscale
     :param file_path: full path of the image file
@@ -68,9 +68,12 @@ def load_image(file_path):
     :return: numpy 2D array -- Grayscale version of the loaded image
     '''
     img = Image.open(file_path)
+
+    if resize:
+        img = img.resize((64, 64))
+
     gray_img = img.convert("L")
     return gray_img
-
 
 @st.cache(ttl=600, max_entries=8)
 def load_point_cloud(file_path):
@@ -81,9 +84,9 @@ def load_point_cloud(file_path):
     :csv format: 3 columns without header
     :return: numpy 2D array -- A Nx3 pandas dataframe with ['x', 'y', 'z'] headers
     '''
-    df = pd.read_csv(file_path, names=['x', 'y', 'z'])
+    df = pd.read_csv(file_path, names=['x', 'y', 'z'], nrows=100)
+    df = df.drop_duplicates()
     return df
-
 
 @st.cache(ttl=600, max_entries=8)
 def load_csv(file_path):
@@ -108,7 +111,7 @@ def infty_proj(x):
 
 
 @st.cache(ttl=600, max_entries=8)
-def GetPds(data, isPointCloud):
+def GetPds(data, isPointCloud, filtration_type='CubicalComplex'):
     '''
 	Compute persistence barcodes (H0, H1) from image or point cloud
 	:param data: image or point cloud data
@@ -130,20 +133,50 @@ def GetPds(data, isPointCloud):
         pd1 = pd1[~np.isinf(pd1).any(axis=1),:]
     else:
         data = np.array(data)
-        data_gudhi = np.resize(data, [128, 128])
-        data_gudhi = data_gudhi.reshape(128*128,1)
-        cub_filtration = gd.CubicalComplex(dimensions = [128,128], top_dimensional_cells=data_gudhi)
-        cub_filtration.persistence()
+        
+        if filtration_type == 'EdgeGrowing':
+            to2828 = lambda d : d.reshape([28,28])
+            padding = lambda d : np.pad(d, ((2,2), (2,2)), 'constant', constant_values=0)
+            sq=morphology.rectangle(3, 3, dtype='uint8')
+            median = lambda d : filters.median(d, sq)
+            binarization = lambda d : 255*(d>5)
+            edger = lambda d : feature.canny(image=d, low_threshold=20, high_threshold=170)
+            inverter = lambda d : np.max(np.float32(d))-d
+            edge_pipeline = lambda d : inverter(edger(binarization(median(padding(to2828(d))))))
 
-        pd0 = cub_filtration.persistence_intervals_in_dimension(0)
-        pd1 = cub_filtration.persistence_intervals_in_dimension(1)
+            edge_image = edge_pipeline(data)
 
-        for j in range(pd0.shape[0]):
-            if pd0[j,1]==np.inf:
-                pd0[j,1]=256
-        for j in range(pd1.shape[0]):
-            if pd1[j,1]==np.inf:
-                pd1[j,1]=256
+            # Filtration function:
+            filt_taxi = lambda ima : distance_transform_bf(ima, metric='taxicab')
+
+            # Complexes
+            taxi_complex = np.array(filt_taxi(edge_image))
+            taxi_complex_opp = np.array(inverter(taxi_complex))
+
+            # Persistence diagram computation
+            n = taxi_complex.shape[0]
+            n_square = n**2
+            dgms = vec.GetCubicalComplexPDs(img=taxi_complex_opp.reshape(n_square,), img_dim=[n,n])
+
+            # Removing the infinity bar
+            pd0 = dgms[0][:-1]
+            pd1 = dgms[1]
+
+        else:
+            data_gudhi = np.resize(data, [64, 64])
+            data_gudhi = data_gudhi.reshape(64*64,1)
+            cub_filtration = gd.CubicalComplex(dimensions = [64,64], top_dimensional_cells=data_gudhi)
+            cub_filtration.persistence()
+
+            pd0 = cub_filtration.persistence_intervals_in_dimension(0)
+            pd1 = cub_filtration.persistence_intervals_in_dimension(1)
+
+            for j in range(pd0.shape[0]):
+                if pd0[j,1]==np.inf:
+                    pd0[j,1]=256
+            for j in range(pd1.shape[0]):
+                if pd1[j,1]==np.inf:
+                    pd1[j,1]=256
     
     return pd0, pd1
 
@@ -206,7 +239,9 @@ def main():
         footer {visibility: hidden;}
         </style>
         """
-    
+    # Fix KMeans memory leakage issue
+    os.environ["OMP_NUM_THREADS"] = '1'
+
     # Populating page info and markups 
     st.set_page_config(page_title="Persistent Homology")
     st.markdown(hide_menu_style, unsafe_allow_html=True)
@@ -218,6 +253,7 @@ def main():
     sidebar_menu = ["Cifar10","Fashion MNIST","Outex68", "Shrec14", "Custom"]
     choice = st.sidebar.selectbox("Select a Dataset", sidebar_menu)
     filtrationType = "Cubical Complex"
+    filtration_type='CubicalComplex'
 
     # Set main and train files path
     mainPath = os.getcwd()
@@ -239,6 +275,7 @@ def main():
         train_pd0_file_paths = [train_folder + "FashionMNIST21_ph0.csv", train_folder + "FashionMNIST502_ph0.csv"]
         train_pd1_file_paths = [train_folder + "FashionMNIST21_ph1.csv", train_folder + "FashionMNIST502_ph1.csv"]
         filtrationType = "Edge growing"
+        filtration_type = 'EdgeGrowing'
     elif choice == "Outex68":
         file_path = mainPath + r"/data/Outex1.bmp"
         train_pd0_file_paths = [train_folder + "Outex2_ph0.csv", train_folder + "Outex3_ph0.csv"]
@@ -250,7 +287,7 @@ def main():
         filtrationType = "Heat Kernel Signature"
     else:
         #This is when the user is opt to select/use their own data to compute/visualize/features PH Barcodes.
-        file_path = st.sidebar.file_uploader("Upload Image Or Point Cloud",type=['png','jpeg','jpg','bmp','csv'])
+        file_path = st.sidebar.file_uploader("Upload Image Or Point Cloud. For point cloud data, only the first 100 points will be processed",type=['png','jpeg','jpg','bmp','csv'])
         if file_path is not None:
             selectedType = os.path.splitext(file_path.name)[1]
             train_file_paths = st.sidebar.file_uploader('''In order to compute Atol or Adaptive Template System features, you need to select 
@@ -287,7 +324,8 @@ def main():
         if isPointCloud:
             input_data = load_point_cloud(file_path)
         else:
-            input_data = load_image(file_path)
+            resize_img = choice == "Custom"
+            input_data = load_image(file_path, resize_img)
 
         if isShowImageChecked:
             if isPointCloud:
@@ -325,7 +363,7 @@ def main():
             pd0 = load_csv(mainPath + r"/data/shrec14_data_0_ph0.csv")
             pd1 = load_csv(mainPath + r"/data/shrec14_data_0_ph1.csv")
         else:
-            pd0, pd1 = GetPds(input_data, isPointCloud)
+            pd0, pd1 = GetPds(input_data, isPointCloud, filtration_type)
 
         if (choice == "Custom"):
             # This is where the user can select more than one data sample for ATOL & ATS vectorization methods.
@@ -335,7 +373,7 @@ def main():
                     if isPointCloud:
                         file_data = load_point_cloud(file)
                     else:
-                        file_data = load_image(file)
+                        file_data = load_image(file, resize=True)
 
                     file_pd0, file_pd1 = GetPds(file_data, isPointCloud)
 
@@ -496,7 +534,7 @@ def main():
             st.subheader("Algebraic Functions")
             st.caption("Number of features = 5")
             
-            fig = figure(title='Algebraic Functions [dim = 0]', height=500, tools = tools)
+            fig = figure(title='Algebraic Functions [dim = 0]', height=250, tools = tools)
 
             if len(pd0) != 0:
                 carlsCoords_0 = vec.GetCarlssonCoordinatesFeature(pd0)
@@ -504,18 +542,10 @@ def main():
             else:
                 carlsCoords_0 = []
             
-            fig.xaxis.major_label_overrides = {
-                0: r"$$f_1 = \sum_i p_i(q_i - p_i)$$",
-                1: r"$$f_2 =\sum_i(q_+-q_i)\,(q_i -p_i)$$",
-                2: r"$$f_3 = \sum_i p_i^2(q_i - p_i)^4$$",
-                3: r"$$f_4 = \sum_i(q_+-q_i)^2\,(q_i - p_i)^4$$",
-                4: r"$$f_5 = \max_i\{(q_i-p_i)\}$$"
-            }
-
-            fig.xaxis.major_label_orientation = 0.8
+            fig.xaxis.major_label_overrides = {i: f'f{i+1}' for i in range(len(carlsCoords_0))}
             st.bokeh_chart(fig, use_container_width=True)
 
-            fig = figure(title='Algebraic Functions [dim = 1]', height=500, tools = tools)
+            fig = figure(title='Algebraic Functions [dim = 1]', height=250, tools = tools)
 
             if len(pd1) != 0:
                 carlsCoords_1 = vec.GetCarlssonCoordinatesFeature(pd1)
@@ -523,15 +553,7 @@ def main():
             else:
                 carlsCoords_1 = []
             
-            fig.xaxis.major_label_overrides = {
-                0: r"$$f_1 = \sum_i p_i(q_i - p_i)$$",
-                1: r"$$f_2 =\sum_i(q_\text{max}-q_i)\,(q_i -p_i)$$",
-                2: r"$$f_3 = \sum_i p_i^2(q_i - p_i)^4$$",
-                3: r"$$f_4 = \sum_i(q_\text{max}-q_i)^2\,(q_i - p_i)^4$$",
-                4: r"$$f_5 = \max_i\{(q_i-p_i)\}$$"
-            }
-
-            fig.xaxis.major_label_orientation = 0.8
+            fig.xaxis.major_label_overrides = {i: f'f{i+1}' for i in range(len(carlsCoords_1))}
             st.bokeh_chart(fig, use_container_width=True)
 
             CreateDownloadButton('Algebraic Functions dim0', carlsCoords_0)
@@ -557,7 +579,7 @@ def main():
 
             if len(persTropCoords_0) != 0:
                 fig.vbar(x=xrange, top=persTropCoords_0, width=0.9, color="darkblue", alpha=0.5)
-                fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(persTropCoords_0))}
+                fig.xaxis.major_label_overrides = {i: f'F{i+1}' for i in range(len(persTropCoords_0))}
             
             fig.xaxis.axis_label = "Coordinate"
             st.bokeh_chart(fig, use_container_width=True)
@@ -573,7 +595,7 @@ def main():
             
             if len(persTropCoords_1) != 0:
                 fig.vbar(x=xrange, top=persTropCoords_1, width=0.9, color="darkred", alpha=0.5)
-                fig.xaxis.major_label_overrides = {i: f'{i+1}' for i in range(len(persTropCoords_1))}
+                fig.xaxis.major_label_overrides = {i: f'F{i+1}' for i in range(len(persTropCoords_1))}
 
             fig.xaxis.axis_label = "Coordinate"
             st.bokeh_chart(fig, use_container_width=True)
@@ -591,32 +613,6 @@ def main():
             st.subheader("Complex Polynomial")
             st.selectbox("Polynomial Type",["R", "S", "T"], index=0, key='CPType')
 
-            # if len(pd0) != 0:
-            #     CP_pd0 = vec.GetComplexPolynomialFeature(pd0, pol_type=st.session_state.CPType)
-            #     source = ColumnDataSource(data={'x': CP_pd0[:,0], 'y': CP_pd0[:,1]})
-            # else:
-            #     CP_pd0 = []
-            #     source = ColumnDataSource(data={'x': [], 'y': []})
-            
-            # fig = figure(title='Complex Polynomial [dim = 0]', height=250, tools = tools)
-            # fig.circle(x='x', y='y', color="darkblue", alpha=0.4, size=5, hover_color="red", source=source)
-            # fig.xaxis.axis_label = "Real"
-            # fig.yaxis.axis_label = "Imaginary"
-            # st.bokeh_chart(fig, use_container_width=True)
-
-            # if len(pd1) != 0:
-            #     CP_pd1 = vec.GetComplexPolynomialFeature(pd1, pol_type=st.session_state.CPType)
-            #     source = ColumnDataSource(data={'x': CP_pd1[:,0], 'y': CP_pd1[:,1]})
-            # else:
-            #     CP_pd1 = []
-            #     source = ColumnDataSource(data={'x': [], 'y': []})
-            
-            # fig = figure(title='Complex Polynomial [dim = 1]', height=250, tools = tools)
-            # fig.circle(x='x', y='y', color="darkred", alpha=0.4, size=5, hover_color="red", source=source)
-            # fig.xaxis.axis_label = "Real"
-            # fig.yaxis.axis_label = "Imaginary"
-            # st.bokeh_chart(fig, use_container_width=True)
-
             if len(pd0) != 0:
                 CP_pd0 = vec.GetComplexPolynomialFeature(pd0, pol_type=st.session_state.CPType)
                 coef = [f'{i}' for i in range(len(CP_pd0))]
@@ -624,7 +620,7 @@ def main():
                 CP_pd0 = []
                 coef = []
             
-            fig = figure(x_range=coef, title='Topological Vector [dim = 0]', height=250, tools=tools)
+            fig = figure(x_range=coef, title='Complex Polynomial [dim = 0]', height=250, tools=tools)
 
             if len(CP_pd0) != 0:
                 source = ColumnDataSource(data = {'coef'      : coef,
@@ -650,7 +646,7 @@ def main():
                 CP_pd1 = []
                 coef = []
             
-            fig = figure(x_range=coef, title='Topological Vector [dim = 1]', height=250, tools = tools)
+            fig = figure(x_range=coef, title='Complex Polynomial [dim = 1]', height=250, tools = tools)
 
             if len(CP_pd1) != 0:
                 source = ColumnDataSource(data = {'coef'      : coef,
@@ -718,19 +714,20 @@ def main():
 
         if isPersLandChecked or visualizeAll:
             st.subheader("Persistence Landscapes")
-            st.caption("Default parameters using persim library")
-            # col1, col2 = st.columns(2)
+            st.caption("Resolution = 100")
+            st.slider("Number of landscapes", 1, 20, value=10, step=1, key='NumLand')
             fig, ax = plt.subplots()
             fig.set_figheight(3)
+            resolution = 100
+            numLand = st.session_state.NumLand
 
             if len(pd0) != 0:
-                PL_0 = landscapes.visuals.PersLandscapeExact([pd0],hom_deg=0)
-                landscapes.visuals.plot_landscape_simple(PL_0, ax=ax)
-                ax.get_legend().remove()
-                PL_0_csv = [flatten(i) for i in PL_0.compute_landscape()]
+                PL_0 = vec.GetPersLandscapeFeature(pd0, num=st.session_state.NumLand, res=resolution)
+
+                for i in range(numLand):
+                    ax.plot(PL_0[i*resolution:(i+1)*resolution])
             else:
                 PL_0 = []
-                PL_0_csv = []
             
             ax.set_title("Persistence Landscapes [dim = 0]")
             fig.tight_layout()
@@ -738,22 +735,21 @@ def main():
 
             fig, ax = plt.subplots()
             fig.set_figheight(3)
-
+            
             if len(pd1) != 0:
-                PL_1 = landscapes.visuals.PersLandscapeExact([pd0, pd1],hom_deg=1)
-                landscapes.visuals.plot_landscape_simple(PL_1, ax=ax)
-                ax.get_legend().remove()
-                PL_1_csv = [flatten(i) for i in PL_1.compute_landscape()]
+                PL_1 = vec.GetPersLandscapeFeature(pd1, num=st.session_state.NumLand, res=resolution)
+
+                for i in range(numLand):
+                    ax.plot(PL_1[i*resolution:(i+1)*resolution])
             else:
                 PL_1 = []
-                PL_1_csv = []
             
             ax.set_title("Persistence Landscapes [dim = 1]")
             fig.tight_layout()
             st.pyplot(fig)
 
-            CreateDownloadButton('Persistence Landscapes dim0', PL_0_csv)
-            CreateDownloadButton('Persistence Landscapes dim1', PL_1_csv)
+            CreateDownloadButton('Persistence Landscapes dim0', PL_0)
+            CreateDownloadButton('Persistence Landscapes dim1', PL_1)
 
             st.markdown('#')
 
@@ -878,7 +874,8 @@ def main():
             st.subheader("Template Function")
             
             if len(pd0) != 0:
-                templateFunc_0 = vec.GetTemplateFunctionFeature(pd0)[0]
+                templateFunc_0 = vec.GetTemplateFunctionFeature(barcodes_train=[pd0], barcodes_test=[], d=5, padding=2)[0]
+
                 xrange = range(len(templateFunc_0))
             else:
                 templateFunc_0 = []
@@ -893,7 +890,7 @@ def main():
             st.bokeh_chart(fig, use_container_width=True)
 
             if len(pd1) != 0:
-                templateFunc_1 = vec.GetTemplateFunctionFeature(pd1)[0]
+                templateFunc_1 = vec.GetTemplateFunctionFeature(barcodes_train=[pd1], barcodes_test=[], d=5, padding=2)[0]
                 xrange = range(len(templateFunc_1))
             else:
                 templateFunc_1 = []
@@ -922,7 +919,7 @@ def main():
             st.caption("Clustering method: GMM")
 
             if len(train_pd0s) > 0 and len(train_pd1s) > 0:
-                st.slider("Number of Clusters", 1, 15, value=10, step=1, key='TempSysNComp')
+                st.slider("Number of Clusters", 1, 15, value=5, step=1, key='TempSysNComp')
 
                 if len(pd0) != 0:
                     TempSys_0 = vec.GetAdaptativeSystemFeature(train_pd0s, [pd0], d=st.session_state.TempSysNComp)
@@ -1023,47 +1020,47 @@ def main():
         # ************************************************
         #   Computing and Visualizing Topological Vector
         # ************************************************
-        isTopologicalVectorChecked = False if visualizeAll else st.checkbox('Topological Vector')
+        # isTopologicalVectorChecked = False if visualizeAll else st.checkbox('Topological Vector')
 
-        if isTopologicalVectorChecked or visualizeAll:
-            st.subheader("Topological Vector")
-            st.slider("Threshold", 2, 10, value=8, step=1, key='TopologicalVectorThreshold')
+        # if isTopologicalVectorChecked or visualizeAll:
+        #     st.subheader("Topological Vector")
+        #     st.slider("Threshold", 2, 10, value=8, step=1, key='TopologicalVectorThreshold')
 
-            if len(pd0) != 0:
-                topologicalVector_0 = vec.GetTopologicalVectorFeature(pd0, thres=st.session_state.TopologicalVectorThreshold)
-                cat = [f'{i}' for i in range(len(topologicalVector_0))]
-            else:
-                topologicalVector_0 = []
-                cat = []
+        #     if len(pd0) != 0:
+        #         topologicalVector_0 = vec.GetTopologicalVectorFeature(pd0, thres=st.session_state.TopologicalVectorThreshold)
+        #         cat = [f'{i}' for i in range(len(topologicalVector_0))]
+        #     else:
+        #         topologicalVector_0 = []
+        #         cat = []
             
-            fig = figure(x_range=cat, title='Topological Vector [dim = 0]', height=250, tools = tools)
+        #     fig = figure(x_range=cat, title='Topological Vector [dim = 0]', height=250, tools = tools)
 
-            if len(topologicalVector_0) != 0:
-                fig.vbar(x=cat, top=topologicalVector_0, width=0.8, color="darkblue", alpha=0.5)
+        #     if len(topologicalVector_0) != 0:
+        #         fig.vbar(x=cat, top=topologicalVector_0, width=0.8, color="darkblue", alpha=0.5)
             
-            fig.xaxis.axis_label = "Element"
-            fig.yaxis.axis_label = "Threshold"
-            st.bokeh_chart(fig, use_container_width=True)
+        #     fig.xaxis.axis_label = "Element"
+        #     fig.yaxis.axis_label = "Threshold"
+        #     st.bokeh_chart(fig, use_container_width=True)
 
-            if len(pd1) != 0:
-                topologicalVector_1 = vec.GetTopologicalVectorFeature(pd1, thres=st.session_state.TopologicalVectorThreshold)
-                cat = [f'{i}' for i in range(len(topologicalVector_1))]
-            else:
-                topologicalVector_1 = []
-                cat = []
+        #     if len(pd1) != 0:
+        #         topologicalVector_1 = vec.GetTopologicalVectorFeature(pd1, thres=st.session_state.TopologicalVectorThreshold)
+        #         cat = [f'{i}' for i in range(len(topologicalVector_1))]
+        #     else:
+        #         topologicalVector_1 = []
+        #         cat = []
             
-            fig = figure(x_range=cat, title='Topological Vector [dim = 1]', height=250, tools = tools)
+        #     fig = figure(x_range=cat, title='Topological Vector [dim = 1]', height=250, tools = tools)
             
-            if len(topologicalVector_1) != 0:
-                fig.vbar(x=cat, top=topologicalVector_1, width=0.8, color="darkred", alpha=0.5)
+        #     if len(topologicalVector_1) != 0:
+        #         fig.vbar(x=cat, top=topologicalVector_1, width=0.8, color="darkred", alpha=0.5)
             
-            fig.xaxis.axis_label = "Element"
-            fig.yaxis.axis_label = "Threshold"
-            st.bokeh_chart(fig, use_container_width=True)
+        #     fig.xaxis.axis_label = "Element"
+        #     fig.yaxis.axis_label = "Threshold"
+        #     st.bokeh_chart(fig, use_container_width=True)
 
-            CreateDownloadButton('Topological Vector dim0', topologicalVector_0)
-            CreateDownloadButton('Topological Vector dim1', topologicalVector_1)
-            st.markdown('#')
+        #     CreateDownloadButton('Topological Vector dim0', topologicalVector_0)
+        #     CreateDownloadButton('Topological Vector dim1', topologicalVector_1)
+        #     st.markdown('#')
 
     # Display error message if no file is selected 
     else:
