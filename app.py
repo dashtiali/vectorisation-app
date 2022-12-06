@@ -41,7 +41,7 @@ import logging
 # import traceback
 # import datetime
 
-
+no 
 # ************************************************
 #           @st.cache, what does it do?
 # According to Streamlit documentation:
@@ -57,7 +57,7 @@ import logging
 # it just reads the output from the local cache and passes it on to the caller.
 # ************************************************
 
-@st.cache(ttl=600, max_entries=8)
+# @st.cache(ttl=600, max_entries=8)
 def load_image(file_path, resize=False, convert_to_gray=True):
     '''
     Load image file and convert to grayscale
@@ -75,7 +75,7 @@ def load_image(file_path, resize=False, convert_to_gray=True):
 
     return img
 
-@st.cache(ttl=600, max_entries=8)
+# @st.cache(ttl=600, max_entries=8)
 def load_point_cloud(file_path):
     '''
     Load point cloud from csv file
@@ -88,7 +88,7 @@ def load_point_cloud(file_path):
     df = df.drop_duplicates()
     return df
 
-@st.cache(ttl=600, max_entries=8)
+# @st.cache(ttl=600, max_entries=8)
 def load_csv(file_path):
     '''
 	Load csv file
@@ -110,7 +110,7 @@ def infty_proj(x):
     return (256 if ~np.isfinite(x) else x)
 
 
-@st.cache(ttl=600, max_entries=8)
+# @st.cache(ttl=600, max_entries=8)
 def GetPds(data, isPointCloud):
     '''
 	Compute persistence barcodes (H0, H1) from image or point cloud
