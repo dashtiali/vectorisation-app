@@ -30,7 +30,7 @@ import vectorisation as vec
 import plotly.express as px
 from bokeh.plotting import figure
 from bokeh.transform import dodge
-from bokeh.models import ColumnDataSource
+from bokeh.models import ColumnDataSource, Range1d
 import pandas as pd
 import io
 import os
@@ -58,7 +58,7 @@ import logging
 # ************************************************
 
 @st.cache(ttl=600, max_entries=8)
-def load_image(file_path, resize=False):
+def load_image(file_path, resize=False, convert_to_gray=True):
     '''
     Load image file and convert to grayscale
     :param file_path: full path of the image file
@@ -69,9 +69,11 @@ def load_image(file_path, resize=False):
 
     if resize:
         img = img.resize((64, 64))
+    
+    if convert_to_gray:
+        img = img.convert("L")
 
-    gray_img = img.convert("L")
-    return gray_img
+    return img
 
 @st.cache(ttl=600, max_entries=8)
 def load_point_cloud(file_path):
@@ -253,7 +255,7 @@ def main():
         train_pd0_file_paths = [train_folder + "Outex2_ph0.csv", train_folder + "Outex3_ph0.csv"]
         train_pd1_file_paths = [train_folder + "Outex2_ph1.csv", train_folder + "Outex3_ph1.csv"]
     elif choice == "Shrec14":
-        file_path = mainPath + r"/data/shrec14_data_0.csv"
+        file_path = mainPath + r"/data/shrec14.png"
         pd0_file_path = mainPath + r"/data/shrec14_data_0_ph0.csv"
         pd1_file_path = mainPath + r"/data/shrec14_data_0_ph1.csv"
         train_pd0_file_paths = [train_folder + "shrec14_data_1_ph0.csv", train_folder + "shrec14_data_2_ph0.csv"]
@@ -261,7 +263,7 @@ def main():
         filtrationType = "Heat Kernel Signature"
     else:
         #This is when the user is opt to select/use their own data to compute/visualize/features PH Barcodes.
-        file_path = st.sidebar.file_uploader("Upload Image Or Point Cloud. For point cloud data, only the first 100 points will be processed",type=['png','jpeg','jpg','bmp','csv'])
+        file_path = st.sidebar.file_uploader("Upload Image Or 3D Point Cloud. For 3D point cloud data, only the first 100 points will be processed",type=['png','jpeg','jpg','bmp','csv'])
         if file_path is not None:
             selectedType = os.path.splitext(file_path.name)[1]
             train_file_paths = st.sidebar.file_uploader('''In order to compute Atol or Adaptive Template System features, you need to select 
@@ -289,17 +291,17 @@ def main():
         #        Load and visualize the input file
         # ************************************************
         isShowImageChecked = st.checkbox('Input File', value=True)
-        isPointCloud = (choice == "Shrec14" or 
-                        (choice == "Custom" and os.path.splitext(file_path.name)[1] == ".csv"))
+        isPointCloud = (choice == "Custom" and os.path.splitext(file_path.name)[1] == ".csv")
 
-        if (choice == "Custom" and os.path.splitext(file_path.name)[1] == ".csv"):
+        if isPointCloud:
             filtrationType = "Vietoris-Rips"
         
         if isPointCloud:
             input_data = load_point_cloud(file_path)
         else:
             resize_img = choice == "Custom"
-            input_data = load_image(file_path, resize_img)
+            as_gray = choice != "Shrec14"
+            input_data = load_image(file_path, resize_img, convert_to_gray=as_gray)
 
         if isShowImageChecked:
             if isPointCloud:
@@ -310,14 +312,26 @@ def main():
                 axisRange = [minValue, maxValue]
                 fig.update_layout(
                 scene = dict(xaxis = dict(nticks=5, range=axisRange,),
-                             yaxis = dict(nticks=5, range=axisRange,),
-                             zaxis = dict(nticks=5, range=axisRange,),),
-                             margin=dict(r=0, l=0, b=0, t=0))
+                            yaxis = dict(nticks=5, range=axisRange,),
+                            zaxis = dict(nticks=5, range=axisRange,),),
+                            margin=dict(r=0, l=0, b=0, t=0))
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                #show the image (from our sample images or custom selected image by the user)
-                st.image(input_data,width=250)
-        
+                if choice == "Shrec14":
+                    st.image(input_data, width=400)
+                else:
+                    #show the image (from our sample images or custom selected image by the user)
+                    col1, col2 = st.columns(2)
+                    col1.image(input_data,width=250)
+                    if choice == "Custom":
+                        col2.markdown(
+                            """
+                            The following preprocessing applied to the uploaded image:
+                            - Resizing to 64 rows by 64 columns
+                            - Converting to grayscale
+                            """
+                            )
+            
         st.caption(f"Filtration type: {filtrationType}")
         
         # ************************************************
@@ -389,6 +403,11 @@ def main():
             
             fig = figure(title='Persistence Barcode [dim = 0]', height=250, tools = tools)
             fig.hbar(y='y', left ='birth', right='death', height=0.1, alpha=0.7, source=source)
+            fig.yaxis.visible = False
+
+            if len(pd0) == 1:
+                fig.y_range = Range1d(-1, 1)
+            
             st.bokeh_chart(fig, use_container_width=True)
 
             # Visualizing PersBarcode in dim-1
@@ -398,6 +417,11 @@ def main():
                 source = ColumnDataSource(data={'birth': [], 'death': [], 'y': []})
             fig = figure(title='Persistence Barcode [dim = 1]', height=250, tools = tools)
             fig.hbar(y='y', left ='birth', right='death', height=0.1, color="darkorange", alpha=0.7, source=source)
+            fig.yaxis.visible = False
+
+            if len(pd1) == 1:
+                fig.y_range = Range1d(-1, 1)
+            
             st.bokeh_chart(fig, use_container_width=True)
 
             CreateDownloadButton('PH barcode dim0', pd0)
