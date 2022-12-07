@@ -847,8 +847,8 @@ def main():
         isTemplateFunctionChecked = False if visualizeAll else st.checkbox('Template Function')
 
         if isTemplateFunctionChecked or visualizeAll:
-            st.caption("")
-            st.subheader("Number of a bins in each axis = 5, Padding = 2")
+            st.subheader("Template Function")
+            st.caption("Number of a bins in each axis = 5, Padding = 2")
             
             if len(pd0) != 0:
                 templateFunc_0 = vec.GetTemplateFunctionFeature(barcodes_train=[pd0], barcodes_test=[], d=5, padding=2)[0]
