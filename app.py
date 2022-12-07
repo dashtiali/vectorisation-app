@@ -222,7 +222,7 @@ def main():
     # Populating sidebar and its main menu
     sidebar_menu = ["Cifar10","Fashion MNIST","Outex68", "Shrec14", "Custom"]
     choice = st.sidebar.selectbox("Select a Dataset", sidebar_menu)
-    filtrationType = "Cubical Complex"
+    filtrationType = "Intensity values on cubical complex"
 
     # Set main and train files path
     mainPath = os.getcwd()
@@ -475,12 +475,12 @@ def main():
             df = pd.DataFrame(np.array((stat_0[0:6], stat_1[0:6])), index=['PH(0)', 'PH(1)'])
             df.columns =['Birth Average', 'Death Average', 'Birth STD.', 'Death STD.', 
                          'Birth Median', 'Death Median']
-            st.dataframe(df)
+            st.dataframe(df, use_container_width=True)
 
             df = pd.DataFrame(np.array((stat_0[6:11], stat_1[6:11])), index=['PH(0)', 'PH(1)'])
             df.columns =['Bar Length Average', 'Bar Length STD', 
                          'Bar Length Median', 'Bar Count', 'Persistence Entropy']
-            st.dataframe(df)
+            st.dataframe(df, use_container_width=True)
 
             CreateDownloadButton('Persistence Stats dim0', stat_0)
             CreateDownloadButton('Persistence Stats dim1', stat_1)
@@ -609,58 +609,35 @@ def main():
 
         if isComplexPolynomialChecked or visualizeAll:
             st.subheader("Complex Polynomial")
+            st.caption("Resolution = 10")
             st.selectbox("Polynomial Type",["R", "S", "T"], index=0, key='CPType')
 
             if len(pd0) != 0:
                 CP_pd0 = vec.GetComplexPolynomialFeature(pd0, pol_type=st.session_state.CPType)
-                coef = [f'{i}' for i in range(len(CP_pd0))]
+                source = ColumnDataSource(data={'x': CP_pd0[:,0], 'y': CP_pd0[:,1]})
             else:
                 CP_pd0 = []
-                coef = []
+                source = ColumnDataSource(data={'x': [], 'y': []})
             
-            fig = figure(x_range=coef, title='Complex Polynomial [dim = 0]', height=250, tools=tools)
+            fig = figure(y_axis_type="log", x_axis_type="log", title='Complex Polynomial [dim = 0]', height=250, tools=tools)
 
             if len(CP_pd0) != 0:
-                source = ColumnDataSource(data = {'coef'      : coef,
-                                                'Real'      : CP_pd0[:,0],
-                                                'Imaginary' : CP_pd0[:,1]})
-                
-                fig.vbar(x=dodge('coef', -0.25, range=fig.x_range), top='Real', width=0.2, source=source,
-                color="#c9d9d3", legend_label="Real")
+                fig.line(x='x', y='y', color='blue', alpha=0.5, line_width=2, source=source)
 
-                fig.vbar(x=dodge('coef',  0.0,  range=fig.x_range), top='Imaginary', width=0.2, source=source,
-                color="#718dbf", legend_label="Imaginary")
-            
-            fig.x_range.range_padding = 0.1
-            fig.xgrid.grid_line_color = None
-            fig.legend.location = "top_left"
-            fig.legend.orientation = "horizontal"
             st.bokeh_chart(fig, use_container_width=True)
 
             if len(pd1) != 0:
                 CP_pd1 = vec.GetComplexPolynomialFeature(pd1, pol_type=st.session_state.CPType)
-                coef = [f'{i}' for i in range(len(CP_pd1))]
+                source = ColumnDataSource(data={'x': CP_pd1[:,0], 'y': CP_pd1[:,1]})
             else:
                 CP_pd1 = []
-                coef = []
+                source = ColumnDataSource(data={'x': [], 'y': []})
             
-            fig = figure(x_range=coef, title='Complex Polynomial [dim = 1]', height=250, tools = tools)
+            fig = figure(y_axis_type="log", x_axis_type="log", title='Complex Polynomial [dim = 0]', height=250, tools=tools)
 
             if len(CP_pd1) != 0:
-                source = ColumnDataSource(data = {'coef'      : coef,
-                                                'Real'      : CP_pd1[:,0],
-                                                'Imaginary' : CP_pd1[:,1]})
-                
-                fig.vbar(x=dodge('coef', -0.25, range=fig.x_range), top='Real', width=0.2, source=source,
-                color="#c9d9d3", legend_label="Real")
+                fig.line(x='x', y='y', color='blue', alpha=0.5, line_width=2, source=source)
 
-                fig.vbar(x=dodge('coef',  0.0,  range=fig.x_range), top='Imaginary', width=0.2, source=source,
-                color="#718dbf", legend_label="Imaginary")
-            
-            fig.x_range.range_padding = 0.1
-            fig.xgrid.grid_line_color = None
-            fig.legend.location = "top_left"
-            fig.legend.orientation = "horizontal"
             st.bokeh_chart(fig, use_container_width=True)
 
             CreateDownloadButton('Complex Polynomial dim0', CP_pd0)
@@ -834,6 +811,7 @@ def main():
 
         if isPersImgChecked or visualizeAll:
             st.subheader("Persistence Image")
+            st.caption("Bandwidth of the Gaussian kernel = 1, Weight function = Constant (i.e lambda x:1)")
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersistenceImageRes')
 
             col1, col2 = st.columns(2)
@@ -869,7 +847,8 @@ def main():
         isTemplateFunctionChecked = False if visualizeAll else st.checkbox('Template Function')
 
         if isTemplateFunctionChecked or visualizeAll:
-            st.subheader("Template Function")
+            st.caption("")
+            st.subheader("Number of a bins in each axis = 5, Padding = 2")
             
             if len(pd0) != 0:
                 templateFunc_0 = vec.GetTemplateFunctionFeature(barcodes_train=[pd0], barcodes_test=[], d=5, padding=2)[0]
