@@ -18,3 +18,22 @@ The app is implemented in Python using Streamlit library together with other Pyt
 
 
 The app will compute the persistence barcodes of dimension 0 and 1 and the user can select to have them plotted by ticking a check box (persistence diagram representation can also be displayed). All  barcode vectorization methods considered in this paper can be computed and visualized in different formats (tables, graphics, scattered plots), depending on the type of vectorizarion. Finally, an export button is associated with each barcode/diagram and vectorization method so that users can easily download associated data for further data analysis tasks.
+
+
+## Run Locally
+A local version of the app can be downloaded from [here](https://github.com/dashtiali/vectorisation-app). Then follow the this steps to run the app
+on your local machine:
+
+1. Extract the compressed files into a folder
+2. Open command window in windows or terminal in Mac/Linux
+3. Navigate to the folder where extracted files are
+4. If you have all dependencies already installed skip step 5.
+5. All dependencies for the app to run are located in requirements.txt file, 
+to install all these dependencies in one go execute this this command:
+```bash
+pip install -r requirements.txt
+```
+6. Then execute the following command to run the app:
+```bash
+streamlit run app.py
+```

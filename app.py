@@ -57,7 +57,7 @@ import logging
 # it just reads the output from the local cache and passes it on to the caller.
 # ************************************************
 
-# @st.cache(ttl=600, max_entries=8)
+@st.cache(ttl=1800, max_entries=20)
 def load_image(file_path, resize=False, convert_to_gray=True):
     '''
     Load image file and convert to grayscale
@@ -75,7 +75,7 @@ def load_image(file_path, resize=False, convert_to_gray=True):
 
     return img
 
-# @st.cache(ttl=600, max_entries=8)
+@st.cache(ttl=1800, max_entries=10)
 def load_point_cloud(file_path):
     '''
     Load point cloud from csv file
@@ -88,7 +88,7 @@ def load_point_cloud(file_path):
     df = df.drop_duplicates()
     return df
 
-# @st.cache(ttl=600, max_entries=8)
+@st.cache(ttl=1800, max_entries=20)
 def load_csv(file_path):
     '''
 	Load csv file
@@ -110,7 +110,7 @@ def infty_proj(x):
     return (256 if ~np.isfinite(x) else x)
 
 
-# @st.cache(ttl=600, max_entries=8)
+@st.cache(ttl=1800, max_entries=20)
 def GetPds(data, isPointCloud):
     '''
 	Compute persistence barcodes (H0, H1) from image or point cloud
@@ -275,14 +275,17 @@ def main():
     # ************************************************
     st.sidebar.markdown('#')
     st.sidebar.caption('''### About:''')
+    
     st.sidebar.caption('''
         This WebApp can be used to compute, visualize  and featurize Persistent Homology Barcodes. It is part of the following research paper:\\
-        [Paper Reference](https://google.com)\\
+        [Paper Reference](https://google.com)''')
+    st.sidebar.markdown('''<div style="text-align: justify; font-size: 14px; color: rgb(163, 168, 184);">
         This WebApp (currently) can compute PH barcodes in dimension 0 and 1. The user can select corresponding check boxes to plot Persistence Barcodes 
         along with an option to plot their corresponding persistence diagrams in one plot. Furthermore, 12 barcode featurization methods can be selected to 
         compute and visualize as tables (e.g. Persistence statistics) or plots. Last but not least, an export button is associated 
         with each PH barcodes, diagrams and 12 featurized PH barcodes so that users can download associated data to their 
-        local machines for further exploration.''')
+        local machines for further exploration.
+    </div>''', unsafe_allow_html=True)
 
     # When file path is selected or changed the following will be populated
     if file_path is not None:
@@ -377,19 +380,24 @@ def main():
         
         # Populate radio buttons for visualize all or custom selected option
         visualizeAll = False
-        visualizationMode = st.radio("Visualization Mode: ", ('Custom Selection', 'Select All'), horizontal=True)
-        visualizeAll = visualizationMode == 'Select All'
+        visualizationMode = st.radio("Visualization Mode: ", ('Persistence Barcodes', 'Persistence Diagram', 'Persistence Statistics', 'Entropy Summary Function',
+                                                              'Algebraic Functions', 'Tropical Coordinates', 'Complex Polynomial', 'Betti Curve', 
+                                                              'Persistence Landscapes', 'Persistence Silhouette', 'Lifespan Curve', 'Persistence Image', 
+                                                              'Template Function', 'Adaptive Template System', 'ATOL'), horizontal=True)
         st.markdown("""---""")
 
         # Initialize chart tools for bokeh chart type
         tools = ["reset", "pan","box_zoom", "wheel_zoom", "hover"]
 
+        # Create a log function to transform array values for visualization
+        log_func = lambda x : -np.log(1 + np.absolute(x)) if x < 0 else np.log(1 + x)
+        # Apply log_func function to array. 
+        log_func_arr = np.vectorize(log_func)
+        
         # ************************************************
         #         Visualizing Persistence Barcodes
         # ************************************************
-        isPersBarChecked = False if visualizeAll else st.checkbox('Persistence Barcodes')
-
-        if isPersBarChecked or visualizeAll:
+        if visualizationMode == 'Persistence Barcodes':
             st.subheader("Persistence Barcodes")
 
             # Visualizing PersBarcode in dim-0 (Together with its error handling)
@@ -431,9 +439,7 @@ def main():
         # ************************************************
         #         Visualizing Persistence Diagram
         # ************************************************
-        isPersDiagChecked = False if visualizeAll else st.checkbox('Persistence Diagram')
-
-        if isPersDiagChecked or visualizeAll:
+        if visualizationMode == 'Persistence Diagram':
             st.subheader("Persistence Diagram")
             # dgms = []
 
@@ -465,9 +471,7 @@ def main():
         # ************************************************
         # Computing and Visualizing Persistence Statistics
         # ************************************************
-        isPersStatsChecked = False if visualizeAll else st.checkbox('Persistence Statistics')
-
-        if isPersStatsChecked or visualizeAll:
+        if visualizationMode == 'Persistence Statistics':
             st.subheader("Persistence Statistics")
             
             stat_0 = vec.GetPersStats(pd0)
@@ -489,9 +493,7 @@ def main():
         # ************************************************
         # Computing and Visualizing Entropy Summary Function
         # ************************************************
-        isPersEntropyChecked = False if visualizeAll else st.checkbox('Entropy Summary Function')
-
-        if isPersEntropyChecked or visualizeAll:
+        if visualizationMode == 'Entropy Summary Function':
             st.subheader("Entropy Summary Function")
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersEntropyRes')
             
@@ -526,17 +528,15 @@ def main():
         # ************************************************
         #   Computing and Visualizing Algebraic Functions
         # ************************************************
-        isCarlsCoordsChecked = False if visualizeAll else st.checkbox('Algebraic Functions')
-
-        if isCarlsCoordsChecked or visualizeAll:
+        if visualizationMode == 'Algebraic Functions':
             st.subheader("Algebraic Functions")
-            st.caption("Number of features = 5")
+            st.caption("Number of features = 5, Log values are displayed for visualization")
             
             fig = figure(title='Algebraic Functions [dim = 0]', height=250, tools = tools)
 
             if len(pd0) != 0:
                 carlsCoords_0 = vec.GetCarlssonCoordinatesFeature(pd0)
-                fig.vbar(x=range(len(carlsCoords_0)), top=carlsCoords_0, width=0.9, color="darkblue", alpha=0.5)
+                fig.vbar(x=range(len(carlsCoords_0)), top=log_func_arr(carlsCoords_0), width=0.9, color="darkblue", alpha=0.5)
             else:
                 carlsCoords_0 = []
             
@@ -547,7 +547,7 @@ def main():
 
             if len(pd1) != 0:
                 carlsCoords_1 = vec.GetCarlssonCoordinatesFeature(pd1)
-                fig.vbar(x=range(len(carlsCoords_1)), top=carlsCoords_1, width=0.9, color="darkred", alpha=0.5)
+                fig.vbar(x=range(len(carlsCoords_1)), top=log_func_arr(carlsCoords_1), width=0.9, color="darkred", alpha=0.5)
             else:
                 carlsCoords_1 = []
             
@@ -561,10 +561,9 @@ def main():
         # ************************************************
         #   Computing and Visualizing Tropical Coordinates
         # ************************************************
-        isPersTropCoordsChecked = False if visualizeAll else st.checkbox('Tropical Coordinates')
-
-        if isPersTropCoordsChecked or visualizeAll:
+        if visualizationMode == 'Tropical Coordinates':
             st.subheader("Tropical Coordinates")
+            st.caption("Log values are displayed for visualization")
 
             if len(pd0) != 0:
                 persTropCoords_0 = vec.GetPersTropicalCoordinatesFeature(pd0)
@@ -576,7 +575,7 @@ def main():
             fig = figure(title='Tropical Coordinates [dim = 0]', height=250, tools = tools)
 
             if len(persTropCoords_0) != 0:
-                fig.vbar(x=xrange, top=persTropCoords_0, width=0.9, color="darkblue", alpha=0.5)
+                fig.vbar(x=xrange, top=log_func_arr(persTropCoords_0), width=0.9, color="darkblue", alpha=0.5)
                 fig.xaxis.major_label_overrides = {i: f'F{i+1}' for i in range(len(persTropCoords_0))}
             
             fig.xaxis.axis_label = "Coordinate"
@@ -592,7 +591,7 @@ def main():
             fig = figure(title='Tropical Coordinates [dim = 1]', height=250, tools = tools)
             
             if len(persTropCoords_1) != 0:
-                fig.vbar(x=xrange, top=persTropCoords_1, width=0.9, color="darkred", alpha=0.5)
+                fig.vbar(x=xrange, top=log_func_arr(persTropCoords_1), width=0.9, color="darkred", alpha=0.5)
                 fig.xaxis.major_label_overrides = {i: f'F{i+1}' for i in range(len(persTropCoords_1))}
 
             fig.xaxis.axis_label = "Coordinate"
@@ -605,39 +604,61 @@ def main():
         # ************************************************
         #   Computing and Visualizing Complex Polynomial
         # ************************************************
-        isComplexPolynomialChecked = False if visualizeAll else st.checkbox('Complex Polynomial')
-
-        if isComplexPolynomialChecked or visualizeAll:
+        if visualizationMode == 'Complex Polynomial':
             st.subheader("Complex Polynomial")
-            st.caption("Resolution = 10")
+            st.caption("Resolution = 10, Log values are displayed for visualization")
             st.selectbox("Polynomial Type",["R", "S", "T"], index=0, key='CPType')
 
             if len(pd0) != 0:
                 CP_pd0 = vec.GetComplexPolynomialFeature(pd0, pol_type=st.session_state.CPType)
-                source = ColumnDataSource(data={'x': CP_pd0[:,0], 'y': CP_pd0[:,1]})
+                coef = [f'{i}' for i in range(len(CP_pd0))]
             else:
                 CP_pd0 = []
-                source = ColumnDataSource(data={'x': [], 'y': []})
+                coef = []
             
-            fig = figure(y_axis_type="log", x_axis_type="log", title='Complex Polynomial [dim = 0]', height=250, tools=tools)
+            fig = figure(x_range=coef, title='Complex Polynomial [dim = 0]', height=250, tools=tools)
 
             if len(CP_pd0) != 0:
-                fig.line(x='x', y='y', color='blue', alpha=0.5, line_width=2, source=source)
+                source = ColumnDataSource(data = {'coef'      : coef,
+                                                  'Real'      : log_func_arr(CP_pd0[:,0]),
+                                                  'Imaginary' : log_func_arr(CP_pd0[:,1])})
+                
+                fig.vbar(x=dodge('coef', -0.25, range=fig.x_range), top='Real', width=0.2, source=source,
+                color="#c9d9d3", legend_label="Real")
 
+                fig.vbar(x=dodge('coef',  0.0,  range=fig.x_range), top='Imaginary', width=0.2, source=source,
+                color="#718dbf", legend_label="Imaginary")
+            
+            fig.x_range.range_padding = 0.1
+            fig.xgrid.grid_line_color = None
+            fig.legend.location = "top_left"
+            fig.legend.orientation = "horizontal"
             st.bokeh_chart(fig, use_container_width=True)
 
             if len(pd1) != 0:
                 CP_pd1 = vec.GetComplexPolynomialFeature(pd1, pol_type=st.session_state.CPType)
-                source = ColumnDataSource(data={'x': CP_pd1[:,0], 'y': CP_pd1[:,1]})
+                coef = [f'{i}' for i in range(len(CP_pd1))]
             else:
                 CP_pd1 = []
-                source = ColumnDataSource(data={'x': [], 'y': []})
+                coef = []
             
-            fig = figure(y_axis_type="log", x_axis_type="log", title='Complex Polynomial [dim = 0]', height=250, tools=tools)
+            fig = figure(x_range=coef, title='Complex Polynomial [dim = 1]', height=250, tools = tools)
 
             if len(CP_pd1) != 0:
-                fig.line(x='x', y='y', color='blue', alpha=0.5, line_width=2, source=source)
+                source = ColumnDataSource(data = {'coef'      : coef,
+                                                'Real'      : log_func_arr(CP_pd1[:,0]),
+                                                'Imaginary' : log_func_arr(CP_pd1[:,1])})
+                
+                fig.vbar(x=dodge('coef', -0.25, range=fig.x_range), top='Real', width=0.2, source=source,
+                color="#c9d9d3", legend_label="Real")
 
+                fig.vbar(x=dodge('coef',  0.0,  range=fig.x_range), top='Imaginary', width=0.2, source=source,
+                color="#718dbf", legend_label="Imaginary")
+            
+            fig.x_range.range_padding = 0.1
+            fig.xgrid.grid_line_color = None
+            fig.legend.location = "top_left"
+            fig.legend.orientation = "horizontal"
             st.bokeh_chart(fig, use_container_width=True)
 
             CreateDownloadButton('Complex Polynomial dim0', CP_pd0)
@@ -647,9 +668,7 @@ def main():
         # ************************************************
         #       Computing and Visualizing Betti Curve
         # ************************************************
-        isBettiCurveChecked = False if visualizeAll else st.checkbox('Betti Curve')
-
-        if isBettiCurveChecked or visualizeAll:
+        if visualizationMode == 'Betti Curve':
             tools = ["pan","box_zoom", "wheel_zoom", "box_select", "hover", "reset"]
             st.subheader("Betti Curve")
             st.slider("Resolution", 0, 100, value=60, step=1, key='BettiCurveRes')
@@ -685,9 +704,7 @@ def main():
         # ************************************************
         # Computing and Visualizing Persistence Landscapes
         # ************************************************
-        isPersLandChecked = False if visualizeAll else st.checkbox('Persistence Landscapes')
-
-        if isPersLandChecked or visualizeAll:
+        if visualizationMode == 'Persistence Landscapes':
             st.subheader("Persistence Landscapes")
             st.caption("Resolution = 100")
             st.slider("Number of landscapes", 1, 20, value=10, step=1, key='NumLand')
@@ -731,9 +748,7 @@ def main():
         # ************************************************
         # Computing and Visualizing Persistence Silhouette
         # ************************************************
-        isPersSilChecked = False if visualizeAll else st.checkbox('Persistence Silhouette')
-
-        if isPersSilChecked or visualizeAll:
+        if visualizationMode == 'Persistence Silhouette':
             st.subheader("Persistence Silhouette")
             st.latex(r'''\textrm{$Weight$ $function$} = (q-p)^w''')
             st.latex(r'''\textrm{ where $w = 1$, $p$ and $q$ are called birth and death of a bar, respectively}''')
@@ -768,9 +783,7 @@ def main():
         # ************************************************
         #   Computing and Visualizing Lifespan Curve
         # ************************************************
-        isPersLifeSpanChecked = False if visualizeAll else st.checkbox('Lifespan Curve')
-
-        if isPersLifeSpanChecked or visualizeAll:
+        if visualizationMode == 'Lifespan Curve':
             st.subheader("Lifespan Curve")
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersLifeSpanRes')
             
@@ -807,9 +820,7 @@ def main():
         # ************************************************
         #   Computing and Visualizing Persistence Image
         # ************************************************
-        isPersImgChecked = False if visualizeAll else st.checkbox('Persistence Image')
-
-        if isPersImgChecked or visualizeAll:
+        if visualizationMode == 'Persistence Image':
             st.subheader("Persistence Image")
             st.caption("Bandwidth of the Gaussian kernel = 1, Weight function = Constant (i.e lambda x:1)")
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersistenceImageRes')
@@ -844,9 +855,7 @@ def main():
         # ************************************************
         #   Computing and Visualizing Template Function
         # ************************************************
-        isTemplateFunctionChecked = False if visualizeAll else st.checkbox('Template Function')
-
-        if isTemplateFunctionChecked or visualizeAll:
+        if visualizationMode == 'Template Function':
             st.subheader("Template Function")
             st.caption("Number of a bins in each axis = 5, Padding = 2")
             
@@ -889,9 +898,7 @@ def main():
         # ************************************************
         # Computing and Visualizing Adaptive Template System
         # ************************************************
-        isTemplateSystemChecked = False if visualizeAll else st.checkbox('Adaptive Template System')
-
-        if isTemplateSystemChecked or visualizeAll:
+        if visualizationMode == 'Adaptive Template System':
             st.subheader("Adaptive Template System")
             st.caption("Clustering method: GMM")
 
@@ -941,9 +948,7 @@ def main():
         # ************************************************
         #           Computing and Visualizing ATOL
         # ************************************************
-        isAtolChecked = False if visualizeAll else st.checkbox('ATOL')
-
-        if isAtolChecked or visualizeAll:
+        if visualizationMode == 'ATOL':
             st.subheader("ATOL")
 
             if len(train_pd0s) > 0 and len(train_pd1s) > 0:
