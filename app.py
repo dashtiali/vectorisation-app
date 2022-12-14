@@ -34,6 +34,7 @@ from bokeh.models import ColumnDataSource, Range1d
 import pandas as pd
 import io
 import os
+import sys
 from scipy.spatial import distance
 from ripser import ripser
 import persim
@@ -58,7 +59,7 @@ import logging
 # ************************************************
 
 @st.cache(ttl=1800, max_entries=20)
-def load_image(file_path, resize=False, convert_to_gray=True):
+def load_image(file_path, resize=False, resize_val=64, convert_to_gray=True):
     '''
     Load image file and convert to grayscale
     :param file_path: full path of the image file
@@ -68,7 +69,7 @@ def load_image(file_path, resize=False, convert_to_gray=True):
     img = Image.open(file_path)
 
     if resize:
-        img = img.resize((64, 64))
+        img = img.resize((resize_val, resize_val))
     
     if convert_to_gray:
         img = img.convert("L")
@@ -76,7 +77,7 @@ def load_image(file_path, resize=False, convert_to_gray=True):
     return img
 
 @st.cache(ttl=1800, max_entries=10)
-def load_point_cloud(file_path):
+def load_point_cloud(file_path, limit_num_rows=True):
     '''
     Load point cloud from csv file
     :param file_path: full path of the csv file
@@ -84,8 +85,12 @@ def load_point_cloud(file_path):
     :csv format: 3 columns without header
     :return: numpy 2D array -- A Nx3 pandas dataframe with ['x', 'y', 'z'] headers
     '''
-    df = pd.read_csv(file_path, names=['x', 'y', 'z'], nrows=100)
-    df = df.drop_duplicates()
+    if limit_num_rows:
+        df = pd.read_csv(file_path, names=['x', 'y', 'z'], nrows=100)
+        df = df.drop_duplicates()
+    else:
+        df = pd.read_csv(file_path, names=['x', 'y', 'z'])
+
     return df
 
 @st.cache(ttl=1800, max_entries=20)
@@ -111,7 +116,7 @@ def infty_proj(x):
 
 
 @st.cache(ttl=1800, max_entries=20)
-def GetPds(data, isPointCloud):
+def GetPds(data, isPointCloud, dim=64):
     '''
 	Compute persistence barcodes (H0, H1) from image or point cloud
 	:param data: image or point cloud data
@@ -132,10 +137,9 @@ def GetPds(data, isPointCloud):
         pd0 = pd0[~np.isinf(pd0).any(axis=1),:]
         pd1 = pd1[~np.isinf(pd1).any(axis=1),:]
     else:
-        data = np.array(data)
-        data_gudhi = np.resize(data, [64, 64])
-        data_gudhi = data_gudhi.reshape(64*64,1)
-        cub_filtration = gd.CubicalComplex(dimensions = [64,64], top_dimensional_cells=data_gudhi)
+        data_gudhi = np.resize(data, [dim, dim])
+        data_gudhi = data_gudhi.reshape(dim*dim,1)
+        cub_filtration = gd.CubicalComplex(dimensions = [dim,dim], top_dimensional_cells=data_gudhi)
         cub_filtration.persistence()
 
         pd0 = cub_filtration.persistence_intervals_in_dimension(0)
@@ -184,18 +188,8 @@ def ApplyHatchPatternToChart(fig):
     fig.xgrid.band_hatch_weight = 0.5
     fig.xgrid.band_hatch_scale = 10
 
-    
-def flatten(lst):
-    '''
-	Flatten a list of lists into one list
-	:param lst: the list to be flatten
-	:type lst: list
-	:return: 1D list -- The flatten list
-	'''
-    return [item for sublist in lst for item in sublist]
 
-
-def main():
+def main(run_locally):
     '''
 	The main function to create the Streamlit app
 	'''
@@ -211,7 +205,7 @@ def main():
         """
     # Fix KMeans memory leakage issue
     os.environ["OMP_NUM_THREADS"] = '1'
-
+    
     # Populating page info and markups 
     st.set_page_config(page_title="Persistent Homology")
     st.markdown(hide_menu_style, unsafe_allow_html=True)
@@ -232,6 +226,10 @@ def main():
     train_pd0_file_paths = []
     train_pd1_file_paths = []
     train_file_paths = []
+    
+    isPointCloud = False
+    resize_image = True
+    image_resize_val = 64
 
     # Populate sample file and the train files paths
     # for selected option from the sidebar main menu
@@ -263,8 +261,16 @@ def main():
         filtrationType = "Heat Kernel Signature"
     else:
         #This is when the user is opt to select/use their own data to compute/visualize/features PH Barcodes.
-        file_path = st.sidebar.file_uploader("Upload Image Or 3D Point Cloud. For 3D point cloud data, only the first 100 points will be processed",type=['png','jpeg','jpg','bmp','csv'])
+        file_path = st.sidebar.file_uploader(f"Upload Image Or 3D Point Cloud.{'' if run_locally else ' For 3D point cloud data, only the first 100 points will be processed'}",
+                                             type=['png','jpeg','jpg','bmp','csv'])
         if file_path is not None:
+            isPointCloud = os.path.splitext(file_path.name)[1] == ".csv"
+
+            if run_locally and not isPointCloud:
+                col1, col2 = st.sidebar.columns(2)
+                resize_image = col1.checkbox('Resize Image', value=True)
+                image_resize_val = col2.number_input('Resizing value:', disabled=not resize_image, value=64, min_value=8, max_value=8000, step=1)
+
             selectedType = os.path.splitext(file_path.name)[1]
             train_file_paths = st.sidebar.file_uploader('''In order to compute Atol or Adaptive Template System features, you need to select 
                                                             some data samples  of the same type as the selected one.''',
@@ -294,17 +300,21 @@ def main():
         #        Load and visualize the input file
         # ************************************************
         isShowImageChecked = st.checkbox('Input File', value=True)
-        isPointCloud = (choice == "Custom" and os.path.splitext(file_path.name)[1] == ".csv")
+
+        # Do not limit number of rows for point cloud when app is running locally
+        limit_num_rows = False if run_locally else True
 
         if isPointCloud:
             filtrationType = "Vietoris-Rips"
         
         if isPointCloud:
-            input_data = load_point_cloud(file_path)
+            input_data = load_point_cloud(file_path, limit_num_rows)
         else:
-            resize_img = choice == "Custom"
-            as_gray = choice != "Shrec14"
-            input_data = load_image(file_path, resize_img, convert_to_gray=as_gray)
+            if choice == "Custom":
+                input_data = load_image(file_path, resize_image, image_resize_val)
+            else:
+                as_gray = choice != "Shrec14"
+                input_data = load_image(file_path, convert_to_gray=as_gray)
 
         if isShowImageChecked:
             if isPointCloud:
@@ -328,9 +338,9 @@ def main():
                     col1.image(input_data,width=250)
                     if choice == "Custom":
                         col2.markdown(
-                            """
+                            f"""
                             The following preprocessing applied to the uploaded image:
-                            - Resizing to 64 rows by 64 columns
+                            {f'- Resizing to {image_resize_val} rows by {image_resize_val} columns' if resize_image else ''}
                             - Converting to grayscale
                             """
                             )
@@ -349,9 +359,17 @@ def main():
         train_pd1s = list()
         train_pd0s.clear()
         train_pd1s.clear()
+
+        if choice == "Custom" and not isPointCloud:
+            data = np.array(input_data)
+            dimension = image_resize_val if resize_image else min(data.shape)
+        else:
+            data = input_data
+            dimension = image_resize_val
+
         #when user selected sample data sets, load pre-computed PersBarcodes in dim-0 & dim-1
         if(choice == "Custom"):
-            pd0, pd1 = GetPds(input_data, isPointCloud)
+            pd0, pd1 = GetPds(data, isPointCloud, dim=dimension)
         else:
             pd0 = load_csv(pd0_file_path)
             pd1 = load_csv(pd1_file_path)
@@ -362,11 +380,12 @@ def main():
             if train_file_paths is not None:
                 for file in train_file_paths:
                     if isPointCloud:
-                        file_data = load_point_cloud(file)
+                        file_data = load_point_cloud(file, limit_num_rows)
                     else:
-                        file_data = load_image(file, resize=True)
+                        file_data = load_image(file, resize_image, image_resize_val)
+                        file_data = np.array(file_data)
 
-                    file_pd0, file_pd1 = GetPds(file_data, isPointCloud)
+                    file_pd0, file_pd1 = GetPds(file_data, isPointCloud, dim=dimension)
 
                     if len(file_pd0) != 0:
                         train_pd0s.append(file_pd0)
@@ -1049,8 +1068,15 @@ def main():
         st.error("Please upload a file to start.")
 
 if __name__ == '__main__':
+    args = sys.argv
+
+    if len(args) > 1 and args[1] == "local":
+        run_locally = True
+    else:
+        run_locally = False
+    
     try:
-        main()
+        main(run_locally)
     except Exception as e:
         logging.error("Exception occurred:\n", exc_info=True)
 

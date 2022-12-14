@@ -1,4 +1,4 @@
-# Persistent Homology
+istent Homology
 Computation | Visualization | Vectorization
 
 > This code accompanies the paper "A Survey of Vectorization Methods in Topological Data Analysis, Dashti A Ali, Aras Asaad, Maria Jose Jimenez, Vidit Nanda, Eduardo Paluzo-Hidalgo, and Manuel Soriano-Trigueros"
@@ -21,19 +21,20 @@ The app will compute the persistence barcodes of dimension 0 and 1 and the user 
 
 
 ## Run Locally
-A local version of the app can be downloaded from [here](https://github.com/dashtiali/vectorisation-app). Then follow the this steps to run the app
+To run the app locally on your machine, first download this repository. Then follow these steps to run the app
 on your local machine:
 
-1. Extract the compressed files into a folder
-2. Open command window in windows or terminal in Mac/Linux
-3. Navigate to the folder where extracted files are
-4. If you have all dependencies already installed skip step 5.
-5. All dependencies for the app to run are located in requirements.txt file, 
-to install all these dependencies in one go execute this this command:
-```bash
+1. Extract the compressed files into a folder.
+2. Open command window in windows or terminal in Mac/Linux.
+3. Navigate to the folder where extracted files are.
+4. Install ```streamlit``` package.
+5. If you have all dependencies already installed skip step 6.
+6. All dependencies for the app to run are located in requirements.txt file, 
+to install all these dependencies in one go execute this command:
+```
 pip install -r requirements.txt
 ```
-6. Then execute the following command to run the app:
-```bash
-streamlit run app.py
+7. Then execute the following command to run the app:
+```
+streamlit run app.py local
 ```
