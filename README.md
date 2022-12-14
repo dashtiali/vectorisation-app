@@ -1,4 +1,4 @@
-istent Homology
+Persistent Homology
 Computation | Visualization | Vectorization
 
 > This code accompanies the paper "A Survey of Vectorization Methods in Topological Data Analysis, Dashti A Ali, Aras Asaad, Maria Jose Jimenez, Vidit Nanda, Eduardo Paluzo-Hidalgo, and Manuel Soriano-Trigueros"
