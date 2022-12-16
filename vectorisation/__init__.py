@@ -9,7 +9,6 @@ from .GetPersImageFeature import *
 from .GetPersLandscapeFeature import *
 from .GetPersLifespanFeature import *
 from .GetPersSilhouetteFeature import *
-from .GetPersStats import *
 from .GetPersTropicalCoordinatesFeature import *
 from .GetTemplateFunctionFeature import *
 from .GetAdaptativeSystemFeature import *

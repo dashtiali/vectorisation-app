@@ -116,7 +116,7 @@ def infty_proj(x):
 
 
 @st.cache(ttl=1800, max_entries=20)
-def GetPds(data, isPointCloud, dim=64):
+def get_pds(data, isPointCloud, dim=64):
     '''
 	Compute persistence barcodes (H0, H1) from image or point cloud
 	:param data: image or point cloud data
@@ -155,7 +155,7 @@ def GetPds(data, isPointCloud, dim=64):
     return pd0, pd1
 
 
-def CreateDownloadButton(label, data):
+def create_download_button(label, data):
     '''
 	Create strreamlit buttons to download a numpy array as csv
 	:param label: name of the downloadable csv file
@@ -175,7 +175,7 @@ def CreateDownloadButton(label, data):
             mime='text/csv')
 
         
-def ApplyHatchPatternToChart(fig):
+def apply_hatch_pattern_to_chart(fig):
     '''
 	Apply hatch pattern on chart area of a bokeh figure
 	:param fig: the bokeh figure to be changed
@@ -187,6 +187,11 @@ def ApplyHatchPatternToChart(fig):
     fig.xgrid.band_hatch_color = "lightgrey"
     fig.xgrid.band_hatch_weight = 0.5
     fig.xgrid.band_hatch_scale = 10
+
+
+def v_space(lines):
+    for _ in range(lines):
+        st.write('&nbsp;')
 
 
 def main(run_locally):
@@ -369,7 +374,7 @@ def main(run_locally):
 
         #when user selected sample data sets, load pre-computed PersBarcodes in dim-0 & dim-1
         if(choice == "Custom"):
-            pd0, pd1 = GetPds(data, isPointCloud, dim=dimension)
+            pd0, pd1 = get_pds(data, isPointCloud, dim=dimension)
         else:
             pd0 = load_csv(pd0_file_path)
             pd1 = load_csv(pd1_file_path)
@@ -385,7 +390,7 @@ def main(run_locally):
                         file_data = load_image(file, resize_image, image_resize_val)
                         file_data = np.array(file_data)
 
-                    file_pd0, file_pd1 = GetPds(file_data, isPointCloud, dim=dimension)
+                    file_pd0, file_pd1 = get_pds(file_data, isPointCloud, dim=dimension)
 
                     if len(file_pd0) != 0:
                         train_pd0s.append(file_pd0)
@@ -398,7 +403,6 @@ def main(run_locally):
             train_pd1s = [load_csv(p) for p in train_pd1_file_paths]
         
         # Populate radio buttons for visualize all or custom selected option
-        visualizeAll = False
         visualizationMode = st.radio("Visualization Mode: ", ('Persistence Barcodes', 'Persistence Diagram', 'Persistence Statistics', 'Entropy Summary Function',
                                                               'Algebraic Functions', 'Tropical Coordinates', 'Complex Polynomial', 'Betti Curve', 
                                                               'Persistence Landscapes', 'Persistence Silhouette', 'Lifespan Curve', 'Persistence Image', 
@@ -451,9 +455,9 @@ def main(run_locally):
             
             st.bokeh_chart(fig, use_container_width=True)
 
-            CreateDownloadButton('PH barcode dim0', pd0)
-            CreateDownloadButton('PH barcode dim1', pd1)
-            st.markdown('#')
+            create_download_button('PH barcode dim0', pd0)
+            create_download_button('PH barcode dim1', pd1)
+            v_space(2)
 
         # ************************************************
         #         Visualizing Persistence Diagram
@@ -493,21 +497,33 @@ def main(run_locally):
         if visualizationMode == 'Persistence Statistics':
             st.subheader("Persistence Statistics")
             
+            st.caption("Persistence Statistics [dim = 0]")
             stat_0 = vec.GetPersStats(pd0)
+            print(len(stat_0))
+            df = pd.DataFrame(np.array(stat_0[0:36]).reshape((4, 9)),
+                              index=['Births', 'Deaths', 'Midpoints', 'Lifespans'])
+            df.columns =['Mean', 'STD', 'Median', 'IQR', 'Range', 'P10', 'P25', 'P75', 'P90']
+            st.dataframe(df, use_container_width=True)
+
+            df = pd.DataFrame(np.array(stat_0[36:38]).reshape(1, 2),
+                              index=['Pd0'])
+            df.columns =['Count', 'Entropy']
+            st.dataframe(df)
+            
+            st.caption("Persistence Statistics [dim = 1]")
             stat_1 = vec.GetPersStats(pd1)
-            df = pd.DataFrame(np.array((stat_0[0:6], stat_1[0:6])), index=['PH(0)', 'PH(1)'])
-            df.columns =['Birth Average', 'Death Average', 'Birth STD.', 'Death STD.', 
-                         'Birth Median', 'Death Median']
+            df = pd.DataFrame(np.array(stat_1[0:36]).reshape((4, 9)),
+                              index=['Births', 'Deaths', 'Midpoints', 'Lifespans'])
+            df.columns =['Mean', 'STD', 'Median', 'IQR', 'Range', 'P10', 'P25', 'P75', 'P90']
             st.dataframe(df, use_container_width=True)
 
-            df = pd.DataFrame(np.array((stat_0[6:11], stat_1[6:11])), index=['PH(0)', 'PH(1)'])
-            df.columns =['Bar Length Average', 'Bar Length STD', 
-                         'Bar Length Median', 'Bar Count', 'Persistence Entropy']
-            st.dataframe(df, use_container_width=True)
-
-            CreateDownloadButton('Persistence Stats dim0', stat_0)
-            CreateDownloadButton('Persistence Stats dim1', stat_1)
-            st.markdown('#')
+            df = pd.DataFrame(np.array(stat_1[36:38]).reshape(1, 2),
+                              index=['Pd1'])
+            df.columns =['Count', 'Entropy']
+            st.dataframe(df)
+            
+            create_download_button('Persistence Stats dim0', stat_0)
+            create_download_button('Persistence Stats dim1', stat_1)
         
         # ************************************************
         # Computing and Visualizing Entropy Summary Function
@@ -525,7 +541,7 @@ def main(run_locally):
             
             fig = figure(x_range=(0, len(PersEntropy_0)),title='Entropy Summary Function [dim = 0]', height=250, tools = tools)
             fig.line(x='x', y='y', color='blue', alpha=0.5, line_width=2, source=source)
-            ApplyHatchPatternToChart(fig)
+            apply_hatch_pattern_to_chart(fig)
             st.bokeh_chart(fig, use_container_width=True)
 
             if len(pd1) != 0:
@@ -537,12 +553,11 @@ def main(run_locally):
             
             fig = figure(x_range=(0, len(PersEntropy_1)),title='Entropy Summary Function [dim = 1]', height=250, tools = tools)
             fig.line(x='x', y='y', color='red', alpha=0.5, line_width=2, source=source)
-            ApplyHatchPatternToChart(fig)
+            apply_hatch_pattern_to_chart(fig)
             st.bokeh_chart(fig, use_container_width=True)
 
-            CreateDownloadButton('Entropy Summary Function dim0', PersEntropy_0)
-            CreateDownloadButton('Entropy Summary Function dim1', PersEntropy_1)
-            st.markdown('#')
+            create_download_button('Entropy Summary Function dim0', PersEntropy_0)
+            create_download_button('Entropy Summary Function dim1', PersEntropy_1)
 
         # ************************************************
         #   Computing and Visualizing Algebraic Functions
@@ -573,9 +588,8 @@ def main(run_locally):
             fig.xaxis.major_label_overrides = {i: f'f{i+1}' for i in range(len(carlsCoords_1))}
             st.bokeh_chart(fig, use_container_width=True)
 
-            CreateDownloadButton('Algebraic Functions dim0', carlsCoords_0)
-            CreateDownloadButton('Algebraic Functions dim1', carlsCoords_1)
-            st.markdown('#')
+            create_download_button('Algebraic Functions dim0', carlsCoords_0)
+            create_download_button('Algebraic Functions dim1', carlsCoords_1)
 
         # ************************************************
         #   Computing and Visualizing Tropical Coordinates
@@ -616,9 +630,8 @@ def main(run_locally):
             fig.xaxis.axis_label = "Coordinate"
             st.bokeh_chart(fig, use_container_width=True)
 
-            CreateDownloadButton('Tropical Coordinates dim0', persTropCoords_0)
-            CreateDownloadButton('Tropical Coordinates dim1', persTropCoords_1)
-            st.markdown('#')
+            create_download_button('Tropical Coordinates dim0', persTropCoords_0)
+            create_download_button('Tropical Coordinates dim1', persTropCoords_1)
 
         # ************************************************
         #   Computing and Visualizing Complex Polynomial
@@ -680,9 +693,8 @@ def main(run_locally):
             fig.legend.orientation = "horizontal"
             st.bokeh_chart(fig, use_container_width=True)
 
-            CreateDownloadButton('Complex Polynomial dim0', CP_pd0)
-            CreateDownloadButton('Complex Polynomial dim1', CP_pd1)
-            st.markdown('#')
+            create_download_button('Complex Polynomial dim0', CP_pd0)
+            create_download_button('Complex Polynomial dim1', CP_pd1)
 
         # ************************************************
         #       Computing and Visualizing Betti Curve
@@ -701,7 +713,7 @@ def main(run_locally):
             
             fig = figure(x_range=(0, len(Btt_0)),title='Betti Curve [dim = 0]', height=250, tools = tools)
             fig.line(x='x', y='y', color='blue', alpha=0.5, line_width=2, source=source)
-            ApplyHatchPatternToChart(fig)
+            apply_hatch_pattern_to_chart(fig)
             st.bokeh_chart(fig, use_container_width=True)
 
             if len(pd1) != 0:
@@ -713,12 +725,11 @@ def main(run_locally):
             
             fig = figure(x_range=(0, len(Btt_1)), title='Betti Curve [dim = 1]', height=250, tools = tools)
             fig.line(x='x', y='y', color='red', alpha=0.5, line_width=2, source=source)
-            ApplyHatchPatternToChart(fig)
+            apply_hatch_pattern_to_chart(fig)
             st.bokeh_chart(fig, use_container_width=True)
 
-            CreateDownloadButton('Betti Curve dim0', Btt_0)
-            CreateDownloadButton('Betti Curve dim1', Btt_1)
-            st.markdown('#')
+            create_download_button('Betti Curve dim0', Btt_0)
+            create_download_button('Betti Curve dim1', Btt_1)
 
         # ************************************************
         # Computing and Visualizing Persistence Landscapes
@@ -759,10 +770,8 @@ def main(run_locally):
             fig.tight_layout()
             st.pyplot(fig)
 
-            CreateDownloadButton('Persistence Landscapes dim0', PL_0)
-            CreateDownloadButton('Persistence Landscapes dim1', PL_1)
-
-            st.markdown('#')
+            create_download_button('Persistence Landscapes dim0', PL_0)
+            create_download_button('Persistence Landscapes dim1', PL_1)
 
         # ************************************************
         # Computing and Visualizing Persistence Silhouette
@@ -795,9 +804,8 @@ def main(run_locally):
             fig.line(x='x', y='y', color='red', alpha=0.5, line_width=2, source=source)
             st.bokeh_chart(fig, use_container_width=True)
 
-            CreateDownloadButton('Persistence Silhouette dim0', PersSil_0)
-            CreateDownloadButton('Persistence Silhouette dim1', PersSil_1)
-            st.markdown('#')
+            create_download_button('Persistence Silhouette dim0', PersSil_0)
+            create_download_button('Persistence Silhouette dim1', PersSil_1)
 
         # ************************************************
         #   Computing and Visualizing Lifespan Curve
@@ -832,9 +840,8 @@ def main(run_locally):
             fig.line(x='x', y='y', color='red', alpha=0.5, line_width=2, source=source)
             st.bokeh_chart(fig, use_container_width=True)
 
-            CreateDownloadButton('Lifespan Curve dim0', persLifeSpan_0)
-            CreateDownloadButton('Lifespan Curve dim1', persLifeSpan_1)
-            st.markdown('#')
+            create_download_button('Lifespan Curve dim0', persLifeSpan_0)
+            create_download_button('Lifespan Curve dim1', persLifeSpan_1)
 
         # ************************************************
         #   Computing and Visualizing Persistence Image
@@ -867,9 +874,8 @@ def main(run_locally):
             ax.set_title("Persistence Image [dim = 1]")
             col2.pyplot(fig)
 
-            CreateDownloadButton('Persistence Image dim0', PI_0)
-            CreateDownloadButton('Persistence Image dim1', PI_1)
-            st.markdown('#')
+            create_download_button('Persistence Image dim0', PI_0)
+            create_download_button('Persistence Image dim1', PI_1)
 
         # ************************************************
         #   Computing and Visualizing Template Function
@@ -909,10 +915,8 @@ def main(run_locally):
             
             st.bokeh_chart(fig, use_container_width=True)
 
-            CreateDownloadButton('Template Function dim0', templateFunc_0)
-            CreateDownloadButton('Template Function dim1', templateFunc_1)
-
-            st.markdown('#')
+            create_download_button('Template Function dim0', templateFunc_0)
+            create_download_button('Template Function dim1', templateFunc_1)
 
         # ************************************************
         # Computing and Visualizing Adaptive Template System
@@ -957,8 +961,8 @@ def main(run_locally):
                 TempSys_0_csv = TempSys_0[0] if len(TempSys_0) != 0 else []
                 TempSys_1_csv = TempSys_1[0] if len(TempSys_1) != 0 else []
 
-                CreateDownloadButton('Adaptive Template System dim0', TempSys_0_csv)
-                CreateDownloadButton('Adaptive Template System dim1', TempSys_1_csv)
+                create_download_button('Adaptive Template System dim0', TempSys_0_csv)
+                create_download_button('Adaptive Template System dim1', TempSys_1_csv)
             else:
                 st.error('''In order to compute Adaptive Template System features, you need to select at least 
                             one more data of the same type as the selected one. Use the second uploader from the sidebar on the left. 
@@ -1009,15 +1013,13 @@ def main(run_locally):
                 fig.xaxis.axis_label = "Clusters"
                 st.bokeh_chart(fig, use_container_width=True)
 
-                CreateDownloadButton('ATOL dim0', atol_0[0])
-                CreateDownloadButton('ATOL dim1', atol_1[0])
+                create_download_button('ATOL dim0', atol_0[0])
+                create_download_button('ATOL dim1', atol_1[0])
             else:
                 st.error('''In order to compute ATOL features, you need to select at least 
                             one more data of the same type as the selected one. Use the second uploader from the sidebar on the left. 
                             If you have already done this step, so selected data did not produce any barcode, select another file.''')
-            
-            st.markdown('#')
-
+        
         # ************************************************
         #   Computing and Visualizing Topological Vector
         # ************************************************
@@ -1061,7 +1063,6 @@ def main(run_locally):
 
         #     CreateDownloadButton('Topological Vector dim0', topologicalVector_0)
         #     CreateDownloadButton('Topological Vector dim1', topologicalVector_1)
-        #     st.markdown('#')
 
     # Display error message if no file is selected 
     else:

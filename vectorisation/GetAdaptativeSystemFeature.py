@@ -1,7 +1,8 @@
 import numpy as np
 from vectorisation import ATS
-# from gudhi import representations
-# from sklearn.cluster import KMeans
+from gudhi import representations
+from sklearn.cluster import KMeans
+
 from vectorisation.bar_cleaner import bar_cleaner
 
 __all__ = ["GetAdaptativeSystemFeature"]
