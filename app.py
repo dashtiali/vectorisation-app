@@ -345,7 +345,7 @@ def main(run_locally):
                     if choice == "Custom":
                         col2.markdown(
                             f"""
-                            The following preprocessing applied to the uploaded image:
+                            The following preprocessing has been applied to the uploaded image:
                             {f'- Resizing to {image_resize_val} rows by {image_resize_val} columns' if resize_image else ''}
                             - Converting to grayscale
                             """
