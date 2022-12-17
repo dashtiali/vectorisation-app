@@ -1,5 +1,5 @@
 '''
-This code was obtained from
+This code is a collection of functions obtained from
     https://github.com/barnesd8/machine_learning_for_persistence/blob/master/mlforpers/persistence_methods/ATS.py
 Under the following license:
    Copyright 2019 Luis G. Polanco Contreras
@@ -18,7 +18,7 @@ import numpy as np
 # import multidim
 import itertools
 import os
-import hdbscan
+#import hdbscan
 import sys
 import pandas as pd
 
@@ -32,14 +32,10 @@ from sklearn import mixture
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import RidgeClassifier
 
-# from multidim.covertree import CoverTree
-# from multidim.models import CDER
 
 import matplotlib.pyplot as plt
 
-# np.set_printoptions(precision=2)
 
-__all__ = ["ATS"]
 
 def limits_box(list_dgms):
 	'''
@@ -248,34 +244,34 @@ def adaptive_features(X_train, X_test, model, y_train, d=25):
         X_test_features = get_all_features(X_test, ellipses, f_ellipse)
 
         
-    elif model == "hdb":
-        print('Begin HDBSCAN...')
-        X_train_temp = np.vstack(X_train)
+    # elif model == "hdb":
+    #     print('Begin HDBSCAN...')
+    #     X_train_temp = np.vstack(X_train)
 
-        clusterer = hdbscan.HDBSCAN()
+    #     clusterer = hdbscan.HDBSCAN()
 
-        clusterer.fit(X_train_temp)
+    #     clusterer.fit(X_train_temp)
 
-        num_clusters = clusterer.labels_.max()
+    #     num_clusters = clusterer.labels_.max()
 
-        ellipses = []
-        for i in range(num_clusters):
-            cluster_i = X_train_temp[clusterer.labels_ == i]
+    #     ellipses = []
+    #     for i in range(num_clusters):
+    #         cluster_i = X_train_temp[clusterer.labels_ == i]
 
-            en = np.mean(clusterer.probabilities_[clusterer.labels_ == i])
+    #         en = np.mean(clusterer.probabilities_[clusterer.labels_ == i])
 
-            mean = np.mean(cluster_i, axis=0)
-            cov_matrix = np.cov(cluster_i.transpose())
+    #         mean = np.mean(cluster_i, axis=0)
+    #         cov_matrix = np.cov(cluster_i.transpose())
 
-            L,v = np.linalg.eig(cov_matrix)
+    #         L,v = np.linalg.eig(cov_matrix)
 
-            temp = {'mean':mean, 'std':np.sqrt(L), 'rotation':v.transpose(), 'radius':max(np.sqrt(L)), 'entropy':en}
-            temp['std'] = 2*temp['std']
-            ellipses.append(temp)
+    #         temp = {'mean':mean, 'std':np.sqrt(L), 'rotation':v.transpose(), 'radius':max(np.sqrt(L)), 'entropy':en}
+    #         temp['std'] = 2*temp['std']
+    #         ellipses.append(temp)
 
-        X_train_features = get_all_features(X_train, ellipses, f_ellipse)
+    #     X_train_features = get_all_features(X_train, ellipses, f_ellipse)
 
-        X_test_features = get_all_features(X_test, ellipses, f_ellipse)
+    #     X_test_features = get_all_features(X_test, ellipses, f_ellipse)
         
         
     else:

@@ -26,7 +26,7 @@ from PIL import Image
 import numpy as np
 import gudhi as gd
 import matplotlib.pyplot as plt
-import vectorisation as vec
+import vectorization as vec
 import plotly.express as px
 from bokeh.plotting import figure
 from bokeh.transform import dodge
@@ -500,7 +500,7 @@ def main(run_locally):
             
             st.caption("Persistence Statistics [dim = 0]")
             stat_0 = vec.GetPersStats(pd0)
-            print(len(stat_0))
+            
             df = pd.DataFrame(np.array(stat_0[0:36]).reshape((4, 9)),
                               index=['Births', 'Deaths', 'Midpoints', 'Lifespans'])
             df.columns =['Mean', 'STD', 'Median', 'IQR', 'Range', 'P10', 'P25', 'P75', 'P90']
@@ -534,7 +534,7 @@ def main(run_locally):
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersEntropyRes')
             
             if len(pd0) != 0:
-                PersEntropy_0 = vec.GetPersEntropyFeature(pd0, res=st.session_state.PersEntropyRes)
+                PersEntropy_0 = vec.GetEntropySummary(pd0, res=st.session_state.PersEntropyRes)
                 source = ColumnDataSource(data={'x': range(0, len(PersEntropy_0)), 'y': PersEntropy_0})
             else:
                 PersEntropy_0 = []
@@ -546,7 +546,7 @@ def main(run_locally):
             st.bokeh_chart(fig, use_container_width=True)
 
             if len(pd1) != 0:
-                PersEntropy_1 = vec.GetPersEntropyFeature(pd1, res=st.session_state.PersEntropyRes)
+                PersEntropy_1 = vec.GetEntropySummary(pd1, res=st.session_state.PersEntropyRes)
                 source = ColumnDataSource(data={'x': range(0, len(PersEntropy_1)), 'y': PersEntropy_1})
             else:
                 PersEntropy_1 = []
@@ -570,7 +570,7 @@ def main(run_locally):
             fig = figure(title='Algebraic Functions [dim = 0]', height=250, tools = tools)
 
             if len(pd0) != 0:
-                carlsCoords_0 = vec.GetCarlssonCoordinatesFeature(pd0)
+                carlsCoords_0 = vec.GetAlgebraicFunctions(pd0)
                 fig.vbar(x=range(len(carlsCoords_0)), top=log_func_arr(carlsCoords_0), width=0.9, color="darkblue", alpha=0.5)
             else:
                 carlsCoords_0 = []
@@ -581,7 +581,7 @@ def main(run_locally):
             fig = figure(title='Algebraic Functions [dim = 1]', height=250, tools = tools)
 
             if len(pd1) != 0:
-                carlsCoords_1 = vec.GetCarlssonCoordinatesFeature(pd1)
+                carlsCoords_1 = vec.GetAlgebraicFunctions(pd1)
                 fig.vbar(x=range(len(carlsCoords_1)), top=log_func_arr(carlsCoords_1), width=0.9, color="darkred", alpha=0.5)
             else:
                 carlsCoords_1 = []
@@ -856,7 +856,7 @@ def main(run_locally):
             fig, ax = plt.subplots()
 
             if len(pd0) != 0:
-                PI_0 = vec.GetPersImageFeature(pd0, st.session_state.PersistenceImageRes)
+                PI_0 = vec.GetPersImageFeature(pd0, bw=1.0, r=st.session_state.PersistenceImageRes)
                 ploted_image = ax.imshow(np.flip(np.reshape(PI_0, [st.session_state.PersistenceImageRes,st.session_state.PersistenceImageRes]), 0))
                 fig.colorbar(ploted_image)
             else:
@@ -868,7 +868,7 @@ def main(run_locally):
             fig, ax = plt.subplots()
 
             if len(pd1) != 0:
-                PI_1 = vec.GetPersImageFeature(pd1, st.session_state.PersistenceImageRes)
+                PI_1 = vec.GetPersImageFeature(pd1, bw=1.0, r=st.session_state.PersistenceImageRes)
                 ploted_image = ax.imshow(np.flip(np.reshape(PI_1, [st.session_state.PersistenceImageRes,st.session_state.PersistenceImageRes]), 0))
                 fig.colorbar(ploted_image)
             else:
