@@ -3,7 +3,7 @@
     This app is a part of the following paper:
 
     "A Survey of Vectorization Methods in Topological Data Analysis, 
-    Dashti A Ali, Aras Asaad, Maria Jose Jimenez, Vidit Nanda, Eduardo Paluzo-Hidalgo,
+    Dashti Ali, Aras Asaad, Maria Jose Jimenez, Vidit Nanda, Eduardo Paluzo-Hidalgo,
     and Manuel Soriano-Trigueros"
 
     Licensed:
@@ -289,7 +289,8 @@ def main(run_locally):
     
     st.sidebar.caption('''
         This WebApp can be used to compute, visualize  and featurize Persistent Homology Barcodes. It is part of the following research paper:\\
-        [Paper Reference](https://google.com)''')
+        [A Survey of Vectorization Methods in Topological Data Analysis, Dashti Ali, Aras Asaad, Maria Jose Jimenez, Vidit Nanda, Eduardo Paluzo-Hidalgo, 
+        and Manuel Soriano-Trigueros](https://github.com/dashtiali/vectorisation-app)''')
     st.sidebar.markdown('''<div style="text-align: justify; font-size: 14px; color: rgb(163, 168, 184);">
         This WebApp (currently) can compute PH barcodes in dimension 0 and 1. The user can select corresponding check boxes to plot Persistence Barcodes 
         along with an option to plot their corresponding persistence diagrams in one plot. Furthermore, 12 barcode featurization methods can be selected to 
@@ -851,12 +852,13 @@ def main(run_locally):
             st.caption("Bandwidth of the Gaussian kernel = 1, Weight function = Constant (i.e lambda x:1)")
             st.slider("Resolution", 0, 100, value=60, step=1, key='PersistenceImageRes')
 
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns(2, gap="medium")
             fig, ax = plt.subplots()
 
             if len(pd0) != 0:
                 PI_0 = vec.GetPersImageFeature(pd0, st.session_state.PersistenceImageRes)
-                ax.imshow(np.flip(np.reshape(PI_0, [st.session_state.PersistenceImageRes,st.session_state.PersistenceImageRes]), 0))
+                ploted_image = ax.imshow(np.flip(np.reshape(PI_0, [st.session_state.PersistenceImageRes,st.session_state.PersistenceImageRes]), 0))
+                fig.colorbar(ploted_image)
             else:
                 PI_0 = []
 
@@ -867,7 +869,8 @@ def main(run_locally):
 
             if len(pd1) != 0:
                 PI_1 = vec.GetPersImageFeature(pd1, st.session_state.PersistenceImageRes)
-                ax.imshow(np.flip(np.reshape(PI_1, [st.session_state.PersistenceImageRes,st.session_state.PersistenceImageRes]), 0))
+                ploted_image = ax.imshow(np.flip(np.reshape(PI_1, [st.session_state.PersistenceImageRes,st.session_state.PersistenceImageRes]), 0))
+                fig.colorbar(ploted_image)
             else:
                 PI_1 = []
                 
