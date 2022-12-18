@@ -40,7 +40,7 @@ pip install -r requirements.txt
 ```
 streamlit run app.py local
 ```
-7. If step 7 does not work for you, then execute the following command to run the app:
+7. If step 6 does not work for you, then execute the following command to run the app:
 ```
 python -m streamlit run app.py local
 ```
