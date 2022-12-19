@@ -1,5 +1,5 @@
 '''
-    Name: Persistent Homology Vectorization Methods Web App
+    Name: Barcode Representation And Vectorization App
     This app is a part of the following paper:
 
     "A Survey of Vectorization Methods in Topological Data Analysis, 
@@ -7,15 +7,7 @@
     and Manuel Soriano-Trigueros"
 
     Licensed:
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    Licensed under the GNU General Public License v3.0;
 '''
 
 # ************************************************
@@ -214,8 +206,8 @@ def main(run_locally):
     # Populating page info and markups 
     st.set_page_config(page_title="Persistent Homology")
     st.markdown(hide_menu_style, unsafe_allow_html=True)
-    st.title("Persistent Homology")
-    st.subheader('Computation | Visualization | Vectorization')
+    st.title("BRAVA")
+    st.subheader('Barcode Representation And Vectorization App')
     st.info('This WebApp can be used to compute, visualize and featurize Persistent Homology Barcodes')
 
     # Populating sidebar and its main menu
