@@ -491,7 +491,7 @@ def main(run_locally):
             st.subheader("Persistence Statistics")
             
             st.caption("Persistence Statistics [dim = 0]")
-            stat_0 = vec.GetPersStats(pd0)
+            stat_0 = vec.GetPersStats(pd0, app=True)
             
             df = pd.DataFrame(np.array(stat_0[0:36]).reshape((4, 9)),
                               index=['Births', 'Deaths', 'Midpoints', 'Lifespans'])
@@ -504,7 +504,7 @@ def main(run_locally):
             st.dataframe(df)
             
             st.caption("Persistence Statistics [dim = 1]")
-            stat_1 = vec.GetPersStats(pd1)
+            stat_1 = vec.GetPersStats(pd1, app=True)
             df = pd.DataFrame(np.array(stat_1[0:36]).reshape((4, 9)),
                               index=['Births', 'Deaths', 'Midpoints', 'Lifespans'])
             df.columns =['Mean', 'STD', 'Median', 'IQR', 'Range', 'P10', 'P25', 'P75', 'P90']
@@ -635,7 +635,7 @@ def main(run_locally):
             st.selectbox("Polynomial Type",["R", "S", "T"], index=0, key='CPType')
 
             if len(pd0) != 0:
-                CP_pd0 = vec.GetComplexPolynomialFeature(pd0, pol_type=st.session_state.CPType)
+                CP_pd0 = vec.GetComplexPolynomialFeature(pd0, pol_type=st.session_state.CPType, app=True)
                 coef = [f'{i}' for i in range(len(CP_pd0))]
             else:
                 CP_pd0 = []
@@ -661,7 +661,7 @@ def main(run_locally):
             st.bokeh_chart(fig, use_container_width=True)
 
             if len(pd1) != 0:
-                CP_pd1 = vec.GetComplexPolynomialFeature(pd1, pol_type=st.session_state.CPType)
+                CP_pd1 = vec.GetComplexPolynomialFeature(pd1, pol_type=st.session_state.CPType, app=True)
                 coef = [f'{i}' for i in range(len(CP_pd1))]
             else:
                 CP_pd1 = []
