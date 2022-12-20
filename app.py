@@ -282,7 +282,7 @@ def main(run_locally):
     st.sidebar.caption('''
         This WebApp can be used to compute, visualize  and featurize Persistent Homology Barcodes. It is part of the following research paper:\\
         [A Survey of Vectorization Methods in Topological Data Analysis, Dashti Ali, Aras Asaad, Maria Jose Jimenez, Vidit Nanda, Eduardo Paluzo-Hidalgo, 
-        and Manuel Soriano-Trigueros](https://github.com/dashtiali/vectorisation-app)''')
+        and Manuel Soriano-Trigueros](https://arxiv.org/abs/2212.09703)''')
     st.sidebar.markdown('''<div style="text-align: justify; font-size: 14px; color: rgb(163, 168, 184);">
         This WebApp (currently) can compute PH barcodes in dimension 0 and 1. The user can select corresponding check boxes to plot Persistence Barcodes 
         along with an option to plot their corresponding persistence diagrams in one plot. Furthermore, 12 barcode featurization methods can be selected to 
@@ -636,6 +636,10 @@ def main(run_locally):
 
             if len(pd0) != 0:
                 CP_pd0 = vec.GetComplexPolynomialFeature(pd0, pol_type=st.session_state.CPType, app=True)
+                
+                if np.count_nonzero(CP_pd0) == 0 and CP_pd0.ndim < 2:
+                    CP_pd0 = np.zeros(st.session_state.CPType,2)
+                    
                 coef = [f'{i}' for i in range(len(CP_pd0))]
             else:
                 CP_pd0 = []
@@ -662,6 +666,10 @@ def main(run_locally):
 
             if len(pd1) != 0:
                 CP_pd1 = vec.GetComplexPolynomialFeature(pd1, pol_type=st.session_state.CPType, app=True)
+                
+                if np.count_nonzero(CP_pd1) == 0 and CP_pd1.ndim < 2:
+                    CP_pd1 = np.zeros(st.session_state.CPType,2)
+                    
                 coef = [f'{i}' for i in range(len(CP_pd1))]
             else:
                 CP_pd1 = []
