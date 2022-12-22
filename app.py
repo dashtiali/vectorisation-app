@@ -196,7 +196,6 @@ def main(run_locally):
     # ************************************************
     hide_menu_style = """
         <style>
-        #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         </style>
         """
