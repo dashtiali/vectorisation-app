@@ -1,20 +1,6 @@
-cff-version: 1.2.0
-message: "If you use this software, please cite corresponding paper as below."
-authors:
-- family-names: "Ali"
-  given-names: "Dashti"
-- family-names: "Asaad"
-  given-names: "Aras"
-- family-names: "Jimenez"
-  given-names: "Maria-Jose"
-- family-names: "Nanda"
-  given-names: "Vidit"
-- family-names: "Paluzo-Hidalgo"
-  given-names: "Eduardo"
-- family-names: "Soriano-Trigueros"
-  given-names: "Manuel"
-title: "A Survey of Vectorization Methods in Topological Data Analysis"
-version: 1.0.0
-doi: arXiv:2212.09703
-date-released: 2022-12-19
-url: "https://arxiv.org/abs/2212.09703"
+@article{ali2022survey,
+  title={A Survey of Vectorization Methods in Topological Data Analysis},
+  author={Ali, Dashti and Asaad, Aras and Jimenez, Maria-Jose and Nanda, Vidit and Paluzo-Hidalgo, Eduardo and Soriano-Trigueros, Manuel},
+  journal={arXiv preprint arXiv:2212.09703},
+  year={2022}
+}
