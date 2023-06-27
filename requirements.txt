@@ -12,7 +12,7 @@ joblib==1.2.0
 kiwisolver==1.4.4
 MarkupSafe==2.1.1
 matplotlib==3.6.2
-numpy==1.24.3
+numpy==1.24.0
 numba==0.57.1
 packaging==22.0
 pandas==1.5.2
