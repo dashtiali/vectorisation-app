@@ -1,4 +1,5 @@
 git+https://github.com/Cimagroup/vectorization-maps.git
+Altair==4
 bokeh==2.4.3
 contourpy==1.0.6
 cycler==0.11.0
@@ -13,7 +14,6 @@ kiwisolver==1.4.4
 latex==0.7.0
 MarkupSafe==2.1.2
 matplotlib==3.6.2
-numpy==1.25.0
 packaging==22.0
 pandas==1.5.2
 persim==0.3.1
