@@ -1,7 +1,7 @@
 # Persistent Homology
 Computation | Visualization | Vectorization
 
-> This code accompanies the paper "A Survey of Vectorization Methods in Topological Data Analysis, Dashti Ali, Aras Asaad, Maria Jose Jimenez, Vidit Nanda, Eduardo Paluzo-Hidalgo, and Manuel Soriano-Trigueros"
+> This code accompanies the paper ["A Survey of Vectorization Methods in Topological Data Analysis, Dashti Ali, Aras Asaad, Maria Jose Jimenez, Vidit Nanda, Eduardo Paluzo-Hidalgo, and Manuel Soriano-Trigueros"](https://ieeexplore.ieee.org/abstract/document/10235748 "Click to open the published paper.")
 
 
 ## About:
