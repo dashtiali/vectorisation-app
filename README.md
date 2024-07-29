@@ -1,3 +1,5 @@
+![BRAVA](https://img.shields.io/badge/Web%20App-BRAVA-blue)
+
 # Persistent Homology
 Computation | Visualization | Vectorization
 
